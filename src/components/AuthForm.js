@@ -28,7 +28,12 @@ const AuthForm = ({ onLogin }) => {
 
     try {
       if (isLogin) {
-        await onLogin(userData.emailOrUsername, userData.password);
+        const loggedInUser = await login(userData.emailOrUsername, userData.password);
+        if (loggedInUser.isAdmin) {
+          navigate('/admin/dashboard'); // Redirect admin to admin dashboard
+        } else {
+          navigate('/dashboard'); // Redirect regular user to dashboard
+        }
       } else {
         // Your existing registration code
       }

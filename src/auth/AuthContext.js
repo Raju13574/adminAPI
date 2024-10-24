@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
       
       if (!token || !user) {
         console.error('AuthContext: Invalid response structure', response.data);
-        return null;
+        throw new Error('Invalid response from server');
       }
       
       localStorage.setItem('authToken', token);
@@ -55,14 +55,15 @@ export const AuthProvider = ({ children }) => {
       
       console.log('AuthContext: Setting user:', user);
       setUser(user);
-      return user;
+      return user; // Return the user object
     } catch (error) {
       console.error('AuthContext: Login error:', error);
       if (error.response) {
         console.log('AuthContext: Error response:', error.response.data);
         console.log('AuthContext: Error status:', error.response.status);
+        throw new Error(error.response.data.message || 'Invalid credentials');
       }
-      throw error;
+      throw new Error('An unexpected error occurred. Please try again.');
     }
   };
 
