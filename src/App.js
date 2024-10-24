@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
@@ -19,6 +19,20 @@ import ScrollToTop from './components/ScrollToTop';
 import Auth from './pages/Auth';
 import AdminDashboard from './components/AdminDashboard/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+
+const ProtectedAdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+  
+  if (!user || !user.isAdmin) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
 
 const AppContent = () => {
   const location = useLocation();
@@ -53,9 +67,9 @@ const AppContent = () => {
           <Route 
             path="/admin/dashboard" 
             element={
-              <ProtectedRoute isAdmin>
+              <ProtectedAdminRoute>
                 <AdminDashboard />
-              </ProtectedRoute>
+              </ProtectedAdminRoute>
             } 
           />
         </Routes>

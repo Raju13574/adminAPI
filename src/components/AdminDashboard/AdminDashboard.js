@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
 
 import Logo from '../../assets/logo.png';
@@ -19,9 +19,9 @@ const AdminDashboard = () => {
   const [subscriptionMetrics, setSubscriptionMetrics] = useState(null);
   const [topUsers, setTopUsers] = useState([]);
   const [users, setUsers] = useState([]);
-  const { logout } = useAuth();
+  const { user, loading: authLoading, logout } = useAuth();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const location = useLocation();
 
   const menuItems = [
     { id: 'dashboard', icon: Layout, label: 'Dashboard' },
@@ -33,24 +33,32 @@ const AdminDashboard = () => {
   ];
 
   useEffect(() => {
-    if (!user || !user.isAdmin) {
-      navigate('/login');
-      return;
-    }
+    const checkAdminStatus = async () => {
+      if (!authLoading) {
+        if (!user) {
+          navigate('/login', { replace: true });
+        } else if (!user.isAdmin) {
+          navigate('/', { replace: true });
+        } else {
+          await fetchAdminData();
+        }
+      }
+    };
 
-    fetchAdminData();
-  }, [user, navigate]);
+    checkAdminStatus();
+  }, [user, authLoading, navigate]);
 
   const fetchAdminData = async () => {
+    if (!user || !user.isAdmin) return;
     setLoading(true);
     setError(null);
     try {
       // Fetch admin dashboard data here
       // Update state with fetched data
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching admin data:', error);
       setError('Failed to load admin data. Please try again later.');
-    } finally {
       setLoading(false);
     }
   };
@@ -64,8 +72,12 @@ const AdminDashboard = () => {
     navigate('/');
   };
 
-  if (loading) {
-    return <div>Loading admin dashboard...</div>;
+  if (authLoading || loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user || !user.isAdmin) {
+    return null;
   }
 
   if (error) {

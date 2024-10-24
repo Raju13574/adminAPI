@@ -11,14 +11,24 @@ export const AuthProvider = ({ children }) => {
     const checkLoggedIn = async () => {
       try {
         const token = localStorage.getItem('authToken');
-        if (token) {
+        const storedUser = JSON.parse(localStorage.getItem('user'));
+        if (token && storedUser) {
           API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          setUser(storedUser);
+        } else {
+          // If no token or user in localStorage, try to fetch from the server
           const response = await API.get('/users/profile');
-          setUser(response.data);
+          const userData = response.data;
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+          localStorage.setItem('authToken', userData.token);
+          API.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
         }
       } catch (error) {
         console.error('Error checking authentication:', error);
         localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        setUser(null);
       } finally {
         setLoading(false);
       }
@@ -40,6 +50,7 @@ export const AuthProvider = ({ children }) => {
       }
       
       localStorage.setItem('authToken', token);
+      localStorage.setItem('user', JSON.stringify(user));
       API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       
       console.log('AuthContext: Setting user:', user);
@@ -58,6 +69,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
     delete API.defaults.headers.common['Authorization'];
   };
 

@@ -128,9 +128,9 @@ const NavLinks = ({ mobile, toggleSidebar, currentPath, activeSection }) => {
     { to: "/faqs", label: "FAQs", section: "faqs" },
   ];
 
-  // Add admin dashboard link if user is admin
-  if (user && user.isAdmin) {
-    links.push({ to: "/admin/dashboard", label: "Admin Dashboard", section: "admin" });
+  // Add Dashboard link only for non-admin users
+  if (user && !user.isAdmin) {
+    links.push({ to: "/dashboard", label: "Dashboard", section: "dashboard" });
   }
 
   const linkClasses = (isActive, isMobile) => 
@@ -184,12 +184,13 @@ const AuthButtons = ({ user, handleLogout, mobile, toggleSidebar }) => {
   if (user) {
     return (
       <div className={`${mobile ? 'space-y-2' : 'flex space-x-2'}`}>
-        <Link to="/dashboard" className={primaryButtonClasses} onClick={mobile ? toggleSidebar : undefined}>
-          <FaUser className="inline mr-1" />Dashboard
-        </Link>
-        {user.isAdmin && (
+        {user.isAdmin ? (
           <Link to="/admin/dashboard" className={primaryButtonClasses} onClick={mobile ? toggleSidebar : undefined}>
-            Admin
+            Admin Dashboard
+          </Link>
+        ) : (
+          <Link to="/dashboard" className={primaryButtonClasses} onClick={mobile ? toggleSidebar : undefined}>
+            <FaUser className="inline mr-1" />Dashboard
           </Link>
         )}
         <button onClick={handleLogout} className={secondaryButtonClasses}>

@@ -43,5 +43,3 @@ export const getSubscriptionMetrics = () => api.get('/admin/stats/subscriptions'
 export const getTopUsers = (params) => api.get('/admin/stats/top-users', { params });
 export const getDashboardStats = () => api.get('/admin/stats/dashboard');
 
-
-// Add any other admin-related API calls here
