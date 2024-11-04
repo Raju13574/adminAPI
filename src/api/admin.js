@@ -1,7 +1,7 @@
 import axios from 'axios';
 import config from './config';
 
-const API_BASE_URL = config.API_BASE_URL;
+const API_BASE_URL = 'http://localhost:5000/api'; // Ensure this matches your backend URL
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -10,13 +10,14 @@ const api = axios.create({
   },
 });
 
-// Add a request interceptor
+// Add a request interceptor  
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    console.log('Request config:', config); // Add this line
     return config;
   },
   (error) => {
@@ -24,10 +25,10 @@ api.interceptors.request.use(
   }
 );
 
-export const getAdminProfile = () => api.get('/admin/profile');
-export const updateAdminProfile = (data) => api.put('/admin/profile', data);
+export const getAdminProfile = () => api.get('/admins/profile');
+export const updateAdminProfile = (data) => api.put('/admins/profile', data);
 export const changeAdminPassword = (data) => api.put('/admin/change-password', data);
-export const getAllUsers = () => api.get('/admin/users');
+export const getAllUsers = () => api.get('/admins/users');
 export const createUser = (data) => api.post('/admin/users', data);
 export const getUserById = (id) => api.get(`/admin/users/${id}`);
 export const updateUserById = (id, data) => api.put(`/admin/users/${id}`, data);
@@ -42,4 +43,3 @@ export const getUserStatistics = () => api.get('/admin/stats/users');
 export const getSubscriptionMetrics = () => api.get('/admin/stats/subscriptions');
 export const getTopUsers = (params) => api.get('/admin/stats/top-users', { params });
 export const getDashboardStats = () => api.get('/admin/stats/dashboard');
-

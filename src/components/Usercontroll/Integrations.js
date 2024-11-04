@@ -54,9 +54,9 @@ function Integrations({ user }) {
   }
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Your API Credentials</h2>
-      <div className="space-y-4">
+    <div className="p-4">
+      <h2 className="text-2xl font-bold mb-4">Your API Credentials</h2>
+      <div className="space-y-3">
         {['clientId', 'clientSecret'].map((field) => (
           <div key={field} className="flex flex-col">
             <label className="text-sm font-medium text-gray-700 mb-1">

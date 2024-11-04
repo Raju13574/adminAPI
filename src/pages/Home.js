@@ -3,15 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { FaArrowRight } from 'react-icons/fa'; // Import the arrow icon
 import Features from '../components/Features';
 import HowItWorks from '../components/HowItWorks';
+import AnalyticsPage from '../components/AnalyticsPage'; // Import the AnalyticsPage component
 import AdvancedMarketing from '../components/AdvancedMarketing';
-import AlternatingSection from '../components/AlternatingSection';
-import TurnSection from '../components/TurnSection.js';
-import SecuritySection from '../components/SecuritySection';
 import OurSolutions from '../components/OurSolutions'; // Import the new component // Import the new component
 import Pricing from './Pricing'; // Import the Pricing component
 import AboutUs from './AboutUs';
 import FAQs from './FAQs';
 import homepagePng from '../assets/homepage.png'; // Import the GIF
+import TurnSection from '../components/TurnSection';
 
 const Home = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -65,20 +64,10 @@ const Home = () => {
       </TurnSection>
       
       <TurnSection>
-        <AlternatingSection 
-          title="Secure and Scalable Compilation Solutions"
-          content="At NeXterChat API, we prioritize the security and scalability of your code execution. Our privately owned information and cyber security measures ensure that your intellectual property remains protected. With advanced containerization and sandboxing techniques, we provide a safe environment for compiling and running code, allowing you to focus on innovation without compromising on security."
-          isReversed={false}
-        />
-      </TurnSection>
-      
-      <TurnSection>
-        <SecuritySection isReversed={false} />
+        <AnalyticsPage />
       </TurnSection>
 
       <OurSolutions />
-
-    
 
       <div id="pricing">
         <Pricing />

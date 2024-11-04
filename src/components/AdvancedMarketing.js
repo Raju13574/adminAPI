@@ -1,138 +1,86 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, useAnimation } from 'framer-motion';
-import { useInView } from 'react-intersection-observer';
+import React, { useRef } from 'react';
+import { motion, useInView } from 'framer-motion';
+import { FaRocket, FaShieldAlt, FaUsers, FaChartLine } from 'react-icons/fa';
+
+const FeatureItem = ({ feature, index }) => {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: false, amount: 0.5 });
+
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
+      animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
+      transition={{ duration: 0.5 }}
+      className={`flex items-center ${index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'}`}
+    >
+      <div className={`w-1/3 ${index % 2 === 0 ? 'pr-8' : 'pl-8'} flex justify-center`}>
+        {feature.icon}
+      </div>
+      <div className="w-2/3">
+        <h3 className="text-2xl font-semibold mb-2 text-[#181F32]">{feature.title}</h3>
+        <p className="text-gray-600 text-lg">{feature.description}</p>
+      </div>
+    </motion.div>
+  );
+};
 
 const AdvancedMarketing = () => {
-  const [activeFeature, setActiveFeature] = useState(0);
-  const controls = useAnimation();
-  const [ref, inView] = useInView({
-    triggerOnce: false,
-    threshold: 0.2,
-  });
-
   const features = [
     {
       title: "Accelerate Development",
       description: "Boost productivity with our lightning-fast compiler, cutting build times by up to 50%.",
-      icon: "⚡",
+      icon: <FaRocket className="text-4xl text-[#A52259]" />,
     },
     {
       title: "Enhance Code Quality",
       description: "Leverage advanced static analysis to identify and fix issues before they reach production.",
-      icon: "🛡️",
+      icon: <FaShieldAlt className="text-4xl text-[#A52259]" />,
     },
     {
       title: "Streamline Collaboration",
       description: "Enable seamless teamwork with real-time code sharing and integrated version control.",
-      icon: "🤝",
+      icon: <FaUsers className="text-4xl text-[#A52259]" />,
     },
     {
       title: "Optimize Resource Usage",
       description: "Reduce infrastructure costs with our efficient compiler that minimizes CPU and memory usage.",
-      icon: "💰",
+      icon: <FaChartLine className="text-4xl text-[#A52259]" />,
     },
   ];
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveFeature((prev) => (prev + 1) % features.length);
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [features.length]);
-
-  useEffect(() => {
-    if (inView) {
-      controls.start('visible');
-    }
-  }, [controls, inView]);
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.2 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: { duration: 0.6 },
-    },
-  };
+  const headerRef = useRef(null);
+  const headerInView = useInView(headerRef, { once: false, amount: 0.5 });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white relative">
-      {/* Background pattern overlay */}
-      <div 
-        className="absolute inset-0 bg-repeat opacity-5"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-        }}
-      ></div>
-
-      {/* Content */}
-      <div className="relative z-10 py-16">
-        <div className="container mx-auto px-4">
-          <motion.div
-            ref={ref}
-            animate={controls}
-            initial="hidden"
-            variants={containerVariants}
-            className="text-center mb-12"
-          >
-            <motion.h2 variants={itemVariants} className="text-5xl font-bold mb-4 text-blue-400">
-              Empower Your Business with Advanced Compilation
-            </motion.h2>
-            <motion.p variants={itemVariants} className="text-xl text-gray-300 max-w-3xl mx-auto">
-              NeXterChat Compiler API delivers enterprise-grade performance and features to drive your business forward.
-            </motion.p>
-          </motion.div>
-
-          <motion.div variants={containerVariants} className="grid md:grid-cols-2 gap-8 items-center">
-            <motion.div variants={itemVariants} className="space-y-6">
-              {features.map((feature, index) => (
-                <div
-                  key={index}
-                  className={`p-6 rounded-lg transition-all duration-300 ${
-                    index === activeFeature ? 'bg-blue-600 shadow-lg scale-105' : 'bg-gray-800 bg-opacity-50'
-                  }`}
-                >
-                  <h3 className="text-2xl font-semibold mb-2 flex items-center">
-                    <span className="mr-2 text-3xl">{feature.icon}</span>
-                    {feature.title}
-                  </h3>
-                  <p className="text-gray-300">{feature.description}</p>
-                </div>
-              ))}
-            </motion.div>
-
-            <motion.div variants={itemVariants} className="relative">
-              <div className="aspect-w-16 aspect-h-9">
-                <iframe
-                  className="rounded-lg shadow-2xl"
-                  src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                  title="NeXterChat Compiler API Demo"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              </div>
-            </motion.div>
-          </motion.div>
-
-          <motion.div variants={itemVariants} className="text-center mt-12">
-            <Link
-              to="/pricing"
-              className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full transition duration-300 transform hover:scale-105"
-            >
-              Explore Enterprise Solutions
-            </Link>
-          </motion.div>
+    <div className="py-16 bg-gradient-to-br from-[#A5F3FC] to-[#FFE4E6]">
+      <div className="container mx-auto px-4">
+        <motion.h2 
+          ref={headerRef}
+          initial={{ opacity: 0, y: -50 }}
+          animate={headerInView ? { opacity: 1, y: 0 } : { opacity: 0, y: -50 }}
+          transition={{ duration: 0.7 }}
+          className="text-4xl font-bold mb-12 text-center text-[#181F32]"
+        >
+          Empower Your Business with Advanced Compilation
+        </motion.h2>
+        
+        <div className="space-y-16">
+          {features.map((feature, index) => (
+            <FeatureItem key={index} feature={feature} index={index} />
+          ))}
         </div>
+
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.7, delay: 0.5 }}
+          className="mt-16 text-center"
+        >
+          <p className="text-lg text-[#181F32] font-semibold">
+            Experience the power of NeXterChat Compiler API and take your development to the next level.
+          </p>
+        </motion.div>
       </div>
     </div>
   );

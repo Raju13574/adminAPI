@@ -1,51 +1,411 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../auth/AuthContext';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { Card, CardContent, Typography, Grid, Button, Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, Alert, AlertTitle, Box, Divider, Paper } from '@mui/material';
+import { 
+  Box, 
+  Typography, 
+  LinearProgress, 
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TableContainer,
+  Paper,
+  Snackbar,
+  Alert,
+  IconButton,
+  Fade,
+  CircularProgress,
+  Chip
+} from '@mui/material';
 import { styled } from '@mui/material/styles';
 import API from '../../api/config';
-import { toast } from 'react-toastify';
+// Import icons
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import CreditCardIcon from '@mui/icons-material/CreditCard';
+import TimelapseIcon from '@mui/icons-material/Timelapse';
+import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
+import { alpha } from '@mui/material/styles';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import BoltIcon from '@mui/icons-material/Bolt';
+import UpdateIcon from '@mui/icons-material/Update';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import { Coins } from 'lucide-react';
 
-const StyledCard = styled(Card)(({ theme }) => ({
-  height: '100%',
+// Enhanced styled components
+const DashboardCard = styled(Box)(({ theme, planId }) => ({
+  padding: theme.spacing(4, 3, 3, 3),
+  background: '#FFFFFF',
+  borderRadius: '16px',
+  position: 'relative',
+  overflow: 'visible',
+  height: '340px',
+  width: '100%',
+  transition: 'all 0.3s ease',
   display: 'flex',
   flexDirection: 'column',
-  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
-  borderRadius: theme.spacing(2),
-  transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
   '&:hover': {
-    transform: 'translateY(-5px)',
-    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.18)',
+    transform: 'translateY(-8px)',
+    boxShadow: '0 12px 24px rgba(0, 0, 0, 0.08)',
+    '& .hover-button': {
+      opacity: 1,
+      transform: 'translateX(-50%) translateY(0)',
+    }
   },
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: '80px',
+    background: planId === 'yearly' ? 
+      'linear-gradient(180deg, rgba(255, 183, 0, 0.1) 0%, rgba(255, 183, 0, 0) 100%)' :
+      planId === 'six_month' ?
+      'linear-gradient(180deg, rgba(155, 138, 251, 0.1) 0%, rgba(155, 138, 251, 0) 100%)' :
+      planId === 'free' ?
+      'linear-gradient(180deg, rgba(253, 162, 155, 0.1) 0%, rgba(253, 162, 155, 0) 100%)' :
+      'linear-gradient(180deg, rgba(244, 243, 255, 0.1) 0%, rgba(244, 243, 255, 0) 100%)',
+    borderRadius: '16px 16px 0 0',
+    opacity: 0.5
+  },
+  '& .corner-shape': {
+    position: 'absolute',
+    width: '60px',
+    height: '60px',
+    transition: 'transform 0.3s ease',
+    opacity: 0.1,
+    zIndex: 0
+  },
+  '& .corner-shape-top': {
+    top: 0,
+    right: 0,
+    borderTop: planId === 'yearly' ? '60px solid #FFB700' :
+              planId === 'six_month' ? '60px solid #9B8AFB' :
+              planId === 'free' ? '60px solid #FDA29B' :
+              '60px solid #444CE7',
+    borderLeft: '60px solid transparent',
+    borderRadius: '0 16px 0 0'
+  },
+  '& .corner-shape-bottom': {
+    bottom: 0,
+    left: 0,
+    borderBottom: planId === 'yearly' ? '60px solid #FFB700' :
+                 planId === 'six_month' ? '60px solid #9B8AFB' :
+                 planId === 'free' ? '60px solid #FDA29B' :
+                 '60px solid #444CE7',
+    borderRight: '60px solid transparent',
+    borderRadius: '0 0 0 16px'
+  }
 }));
 
-const StyledCardContent = styled(CardContent)({
-  flexGrow: 1,
+const IconWrapper = styled(Box)(({ color = '#1976D2' }) => ({
+  width: 40,
+  height: 40,
+  borderRadius: '12px',
+  background: alpha(color, 0.1),
   display: 'flex',
-  flexDirection: 'column',
-});
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: '16px',
+  '& svg': {
+    color: color,
+    fontSize: 20
+  }
+}));
 
-const BillingContent = () => {
+const StatsCard = styled(Box)(({ theme }) => ({
+  padding: '16px',
+  background: '#FFFFFF',
+  borderRadius: '16px',
+  border: '1px solid rgba(231, 235, 255, 0.12)',
+  height: '160px',
+  position: 'relative',
+  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+  '&:hover': {
+    transform: 'translateY(-8px)',
+    boxShadow: '0 12px 24px rgba(0, 0, 0, 0.06)',
+    '&::after': {
+      opacity: 1
+    }
+  },
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    inset: 0,
+    borderRadius: '16px',
+    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 100%)',
+    opacity: 0,
+    transition: 'opacity 0.3s ease',
+    pointerEvents: 'none'
+  }
+}));
+
+const IconBox = styled(Box)(({ bgColor = '#F4F3FF' }) => ({
+  width: 36,
+  height: 36,
+  borderRadius: '10px',
+  background: bgColor,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginBottom: '12px',
+  '& svg': {
+    fontSize: 20
+  }
+}));
+
+const CustomLinearProgress = styled(LinearProgress)(({ theme }) => ({
+  height: 6,
+  borderRadius: 3,
+  backgroundColor: 'rgba(101, 98, 255, 0.12)',
+  '& .MuiLinearProgress-bar': {
+    borderRadius: 3,
+    backgroundColor: '#6562FF'
+  }
+}));
+
+// Update getUpgradeRecommendation to not include savings message
+const getUpgradeRecommendation = (currentPlan, planName) => {
+  if (!currentPlan) return null;
+
+  const planTypes = {
+    'Monthly Plan': 1,
+    'Three Months Plan': 2,
+    'Six Months Plan': 3,
+    'Yearly Plan': 4
+  };
+
+  const currentPlanName = currentPlan === 'monthly' ? 'Monthly Plan' : currentPlan;
+  const currentTier = planTypes[currentPlanName];
+  const planTier = planTypes[planName];
+
+  if (planTier === currentTier + 1) {
+    return {
+      recommended: true,
+      highlight: true
+    };
+  }
+  return null;
+};
+
+// Update the HoverButton component with better styling
+const HoverButton = styled(Button)(({ theme, planId, isCurrentPlan }) => ({
+  position: 'absolute',
+  left: '50%',
+  bottom: -20,
+  transform: 'translateX(-50%) translateY(10px)',
+  opacity: 0,
+  transition: 'all 0.3s ease',
+  whiteSpace: 'nowrap',
+  boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
+  padding: '8px 24px',
+  borderRadius: '8px',
+  textTransform: 'none',
+  fontWeight: 500,
+
+  // Conditional styling based on plan and current status
+  ...(isCurrentPlan ? {
+    backgroundColor: '#FEF3F2',
+    color: '#B42318',
+    border: '1px solid #FDA29B',
+    '&:hover': {
+      backgroundColor: '#FEE4E2',
+      border: '1px solid #FDA29B',
+    }
+  } : {
+    backgroundColor: getPlanButtonColor(planId).bg,
+    color: getPlanButtonColor(planId).text,
+    border: `1px solid ${getPlanButtonColor(planId).border}`,
+    '&:hover': {
+      backgroundColor: getPlanButtonColor(planId).hover,
+      border: `1px solid ${getPlanButtonColor(planId).border}`,
+    }
+  }),
+
+  '&:hover': {
+    transform: 'translateX(-50%) translateY(5px)',
+  }
+}));
+
+// Add this helper function for button colors
+const getPlanButtonColor = (planId) => {
+  switch (planId) {
+    case 'yearly':
+      return {
+        bg: '#FFFAEB',
+        text: '#B54708',
+        border: '#FFB700',
+        hover: '#FEF0C7'
+      };
+    case 'six_month':
+      return {
+        bg: '#F4F3FF',
+        text: '#5925DC',
+        border: '#9B8AFB',
+        hover: '#EBE9FE'
+      };
+    case 'three_month':
+      return {
+        bg: '#ECFDF3',
+        text: '#027A48',
+        border: '#12B76A',
+        hover: '#D1FADF'
+      };
+    case 'monthly':
+      return {
+        bg: '#F4F3FF',
+        text: '#444CE7',
+        border: '#444CE7',
+        hover: '#EBE9FE'
+      };
+    default:
+      return {
+        bg: '#F9FAFB',
+        text: '#344054',
+        border: '#D0D5DD',
+        hover: '#F2F4F7'
+      };
+  }
+};
+
+// Add missing components/functions
+const PlansGrid = styled(Box)(({ theme }) => ({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+  gap: theme.spacing(3),
+  width: '100%'
+}));
+
+// Add a function to determine card border color and style
+const getCardBorderStyle = (plan, isCurrentPlan, recommendation) => {
+  if (isCurrentPlan) {
+    return '2px solid #444CE7';
+  }
+  if (recommendation?.highlight) {
+    return '2px solid #12B76A';
+  }
+  switch (plan.id) {
+    case 'free':
+      return '2px solid #FDA29B';
+    case 'six_month':
+      return '2px solid #9B8AFB';
+    case 'yearly':
+      return '2px solid #FFB700';
+    default:
+      return '1px solid rgba(231, 235, 255, 0.7)';
+  }
+};
+
+// Add this constant at the top of your component
+const MONTHLY_PRICE = 499; // Base monthly price in rupees
+
+// Update the calculateSavings function to return rounded numbers
+const calculateSavings = (plan) => {
+  let monthlyEquivalent;
+  let savings = 0;
+
+  switch (plan.id) {
+    case 'three_month':
+      monthlyEquivalent = Math.round((plan.priceInPaisa / 100) / 3);
+      savings = Math.round(((MONTHLY_PRICE - monthlyEquivalent) / MONTHLY_PRICE) * 100);
+      return { percent: savings, monthly: monthlyEquivalent };
+    case 'six_month':
+      monthlyEquivalent = Math.round((plan.priceInPaisa / 100) / 6);
+      savings = Math.round(((MONTHLY_PRICE - monthlyEquivalent) / MONTHLY_PRICE) * 100);
+      return { percent: savings, monthly: monthlyEquivalent };
+    case 'yearly':
+      monthlyEquivalent = Math.round((plan.priceInPaisa / 100) / 12);
+      savings = Math.round(((MONTHLY_PRICE - monthlyEquivalent) / MONTHLY_PRICE) * 100);
+      return { percent: savings, monthly: monthlyEquivalent };
+    default:
+      return null;
+  }
+};
+
+const getStatusColor = (type) => {
+  const colors = {
+    deposit: { bg: '#ECFDF3', color: '#12B76A' },
+    withdrawal: { bg: '#FEF3F2', color: '#F04438' },
+    subscription_payment: { bg: '#F9F5FF', color: '#7F56D9' },
+    subscription_cancellation: { bg: '#FFF6ED', color: '#F79009' },
+    credit_purchase: { bg: '#EEF4FF', color: '#444CE7' }
+  };
+  return colors[type] || { bg: '#F2F4F7', color: '#344054' };
+};
+
+const getStatusBgColor = (status) => {
+  const colors = {
+    completed: '#ECFDF3',
+    pending: '#FFF6ED',
+    failed: '#FEF3F2'
+  };
+  return colors[status] || '#F2F4F7';
+};
+
+const getStatusTextColor = (status) => {
+  const colors = {
+    completed: '#12B76A',
+    pending: '#F79009',
+    failed: '#F04438'
+  };
+  return colors[status] || '#344054';
+};
+
+const calculateDaysRemaining = (endDate) => {
+  if (!endDate) return 0;
+  const end = new Date(endDate);
+  const now = new Date();
+  const diffTime = end - now;
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays > 0 ? diffDays : 0;
+};
+
+const BillingContent = ({ onTabChange }) => {
   const { user } = useAuth();
   const [currentPlan, setCurrentPlan] = useState(null);
   const [subscriptionStatus, setSubscriptionStatus] = useState(null);
   const [availablePlans, setAvailablePlans] = useState([]);
-  const [usageData, setUsageData] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState({
     subscription: true,
     plans: true,
-    usage: true,
     transactions: true
   });
   const [generalError, setGeneralError] = useState(null);
+
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+
+  const [buttonLoading, setButtonLoading] = useState({
+    upgrade: false,
+    cancel: false
+  });
+
+  const handleCloseSnackbar = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+  const showNotification = (message, severity = 'success') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity
+    });
+  };
 
   useEffect(() => {
     if (user) {
       fetchSubscriptionStatus();
       fetchAvailablePlans();
-      fetchUsageData();
       fetchTransactions();
     }
   }, [user]);
@@ -58,6 +418,11 @@ const BillingContent = () => {
       return () => clearTimeout(timer);
     }
   }, [user, generalError]);
+
+  useEffect(() => {
+    console.log('Current Plan:', subscriptionStatus?.plan);
+    console.log('Available Plans:', availablePlans);
+  }, [subscriptionStatus, availablePlans]);
 
   const fetchSubscriptionStatus = async () => {
     try {
@@ -85,25 +450,20 @@ const BillingContent = () => {
     }
   };
 
-  const fetchUsageData = async () => {
-    try {
-      const response = await API.get('/usage/data');
-      setUsageData(response.data);
-    } catch (err) {
-      console.error('Error fetching usage data:', err);
-      setErrors(prev => ({ ...prev, usage: err.message }));
-    } finally {
-      setLoading(prev => ({ ...prev, usage: false }));
-    }
-  };
-
   const fetchTransactions = async () => {
     try {
-      const response = await API.get('/users/transactions');
-      setTransactions(response.data);
-    } catch (err) {
-      console.error('Error fetching transactions:', err);
-      setErrors(prev => ({ ...prev, transactions: err.message }));
+      setLoading(prev => ({ ...prev, transactions: true }));
+      const response = await API.get('/subscription/history');
+      
+      if (response.data) {
+        setTransactions(response.data);
+      } else {
+        setTransactions([]);
+      }
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      setErrors(prev => ({ ...prev, transactions: error.message }));
+      showNotification('Failed to load transaction history', 'error');
     } finally {
       setLoading(prev => ({ ...prev, transactions: false }));
     }
@@ -111,197 +471,660 @@ const BillingContent = () => {
 
   const handleUpgrade = async (planId) => {
     try {
-      console.log('Upgrading to plan:', planId);
-      const response = await API.post(`/subscription/plans/${planId}/upgrade`);
-      console.log('Upgrade response:', response.data);
-      await fetchSubscriptionStatus();
-      toast.success(response.data.message || 'Subscribed successfully');
+      setButtonLoading(prev => ({ ...prev, upgrade: true }));
+      
+      // Log the attempt
+      console.log('Attempting to upgrade to plan:', planId);
+
+      // Create order
+      const orderResponse = await API.post('/subscription/plans/' + planId + '/create-razorpay-order');
+      console.log('Order response:', orderResponse.data);
+
+      if (!orderResponse.data || !orderResponse.data.orderId) {
+        throw new Error('Invalid order response');
+      }
+
+      // Initialize Razorpay
+      const options = {
+        key: process.env.REACT_APP_RAZORPAY_KEY_ID,
+        amount: orderResponse.data.amountInPaisa,
+        currency: "INR",
+        name: "CompilerX",
+        description: `Upgrade to ${orderResponse.data.plan.name}`,
+        order_id: orderResponse.data.orderId,
+        handler: async function (response) {
+          try {
+            console.log('Payment successful:', response);
+            
+            // Verify payment
+            const verifyResponse = await API.post('/subscription/verify-razorpay-payment', {
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_signature: response.razorpay_signature,
+              planId: planId
+            });
+
+            console.log('Verification response:', verifyResponse.data);
+            
+            // Refresh subscription status
+            await fetchSubscriptionStatus();
+            showNotification('Successfully upgraded subscription!');
+          } catch (err) {
+            console.error('Payment verification failed:', err);
+            showNotification(err.response?.data?.error || 'Payment verification failed', 'error');
+          }
+        },
+        prefill: {
+          name: user?.name,
+          email: user?.email
+        },
+        theme: {
+          color: "#444CE7"
+        },
+        modal: {
+          ondismiss: function() {
+            console.log('Payment modal closed');
+            setButtonLoading(prev => ({ ...prev, upgrade: false }));
+          }
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+
     } catch (err) {
-      console.error('Error upgrading plan:', err);
-      toast.error(err.response?.data?.error || 'Server error');
+      console.error('Upgrade error:', err);
+      showNotification(err.response?.data?.error || 'Failed to upgrade subscription', 'error');
+      setButtonLoading(prev => ({ ...prev, upgrade: false }));
     }
   };
 
   const handleCancel = async () => {
     try {
+      setButtonLoading(prev => ({ ...prev, cancel: true }));
+      console.log('Attempting to cancel subscription');
+
       const response = await API.post('/subscription/cancel');
-      await fetchSubscriptionStatus();
-      toast.success(response.data.message || 'Subscription cancelled successfully');
+      console.log('Cancel response:', response.data);
+
+      if (response.data.success) {
+        await fetchSubscriptionStatus();
+        showNotification('Successfully cancelled subscription');
+      } else {
+        throw new Error(response.data.error || 'Failed to cancel subscription');
+      }
     } catch (err) {
-      console.error('Error cancelling subscription:', err);
-      toast.error(err.response?.data?.error || 'Server error');
+      console.error('Cancel error:', err);
+      showNotification(err.response?.data?.error || 'Failed to cancel subscription', 'error');
+    } finally {
+      setButtonLoading(prev => ({ ...prev, cancel: false }));
     }
   };
 
-  const renderCreditUsageChart = () => {
-    if (!subscriptionStatus) return null;
-    const data = [
-      { name: 'Used Credits', value: subscriptionStatus.creditsPerDay - subscriptionStatus.remainingCredits },
-      { name: 'Remaining Credits', value: subscriptionStatus.remainingCredits },
-    ];
-    const COLORS = ['#FF0000', '#00C49F']; // Red for used credits, Green for remaining credits
+  const renderActionButton = (plan, isCurrentPlan) => {
+    const isLoading = buttonLoading[isCurrentPlan ? 'cancel' : 'upgrade'];
 
     return (
-      <ResponsiveContainer width="100%" height={200}>
-        <PieChart>
-          <Pie
-            data={data}
-            cx="50%"
-            cy="50%"
-            innerRadius={60}
-            outerRadius={80}
-            fill="#8884d8"
-            paddingAngle={5}
-            dataKey="value"
-          >
-            {data.map((entry, index) => (
-              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
+      <HoverButton
+        className="hover-button"
+        planId={plan.id}
+        isCurrentPlan={isCurrentPlan}
+        onClick={() => isCurrentPlan ? handleCancel() : handleUpgrade(plan.id)}
+        disabled={isLoading || (plan.id === 'free' && !isCurrentPlan)}
+      >
+        {isLoading ? (
+          <CircularProgress size={20} color="inherit" />
+        ) : (
+          isCurrentPlan ? 'Cancel Plan' : 'Upgrade Plan'
+        )}
+      </HoverButton>
     );
   };
 
-  const renderSection = (title, content, isLoading, error) => (
-    <StyledCard>
-      <StyledCardContent>
-        <Typography variant="h6" gutterBottom color="primary" fontWeight="bold">{title}</Typography>
-        {isLoading ? (
-          <Box display="flex" justifyContent="center" alignItems="center" height="100%">
-            <CircularProgress />
-          </Box>
-        ) : error ? (
-          <Alert severity="error"><AlertTitle>Error</AlertTitle>{error}</Alert>
-        ) : (
-          content
-        )}
-      </StyledCardContent>
-    </StyledCard>
-  );
-
   return (
     <Box sx={{ 
-      p: 4, 
-      backgroundColor: '#f8f9fa', 
-      minHeight: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center' 
+      p: 1,
+      maxWidth: '100%'
     }}>
-      <Typography variant="h4" gutterBottom color="primary" sx={{ mb: 4, fontWeight: 'bold' }}>Billing Dashboard</Typography>
-      {generalError && (
-        <Alert severity={generalError.severity} sx={{ mb: 3, width: '100%', maxWidth: '800px' }}>
-          <AlertTitle>{generalError.severity === 'error' ? 'Error' : 'Success'}</AlertTitle>
-          {generalError.message}
-        </Alert>
-      )}
-      
-      <Grid container spacing={4} sx={{ maxWidth: '1200px', width: '100%' }}>
-        <Grid item xs={12} md={6}>
-          {renderSection("Current Subscription", 
-            subscriptionStatus && (
-              <Box>
-                <Typography variant="h5" color="secondary" fontWeight="bold">
-                  {subscriptionStatus.plan === 'free' ? 'Free' : subscriptionStatus.plan}
-                </Typography>
-                <Typography variant="subtitle1">Status: <span style={{ color: 'green', fontWeight: 'bold' }}>{subscriptionStatus.status}</span></Typography>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="body1">Credits per day: <strong>{subscriptionStatus.creditsPerDay}</strong></Typography>
-                <Typography variant="body1">Remaining credits: <strong>{subscriptionStatus.remainingCredits}</strong></Typography>
-                {subscriptionStatus.plan !== 'free' && (
-                  <Typography variant="body1">Expires on: <strong>{new Date(subscriptionStatus.endDate).toLocaleDateString()}</strong></Typography>
-                )}
-                {renderCreditUsageChart()}
-                {subscriptionStatus.plan !== 'free' && (
-                  <Button variant="contained" color="secondary" onClick={handleCancel} fullWidth sx={{ mt: 2 }}>
-                    Cancel Subscription
-                  </Button>
-                )}
-              </Box>
-            ),
-            loading.subscription,
-            errors.subscription
-          )}
-        </Grid>
-        <Grid item xs={12} md={6}>
-          {renderSection("Available Plans", 
-            <Paper elevation={0} sx={{ overflow: 'hidden' }}>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: '#f0f0f0' }}>
-                    <TableCell><Typography fontWeight="bold">Plan</Typography></TableCell>
-                    <TableCell><Typography fontWeight="bold">Credits</Typography></TableCell>
-                    <TableCell><Typography fontWeight="bold">Price</Typography></TableCell>
-                    <TableCell><Typography fontWeight="bold">Action</Typography></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {availablePlans
-                    .filter(plan => plan.id !== 'pay_per_request') // Filter out the Pay Per Request plan
-                    .map((plan) => (
-                      <TableRow key={plan.id} hover>
-                        <TableCell><Typography fontWeight="medium">{plan.name}</Typography></TableCell>
-                        <TableCell>
-                          {plan.creditsPerDay || plan.creditsPerMonth || plan.creditsPerYear || 'N/A'}
-                        </TableCell>
-                        <TableCell>${plan.price.toFixed(2)}</TableCell>
-                        <TableCell>
-                          {plan.id !== currentPlan && plan.price > 0 && (
-                            <Button 
-                              variant="contained" 
-                              color="primary"
-                              onClick={() => handleUpgrade(plan.id)}
-                              size="small"
-                            >
-                              Upgrade
-                            </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </Paper>,
-            loading.plans,
-            errors.plans
-          )}
-        </Grid>
-        <Grid item xs={12}>
-          {renderSection("Recent Transactions", 
-            <Paper elevation={0} sx={{ overflow: 'hidden' }}>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: '#f0f0f0' }}>
-                    <TableCell><Typography fontWeight="bold">Date</Typography></TableCell>
-                    <TableCell><Typography fontWeight="bold">Type</Typography></TableCell>
-                    <TableCell><Typography fontWeight="bold">Amount</Typography></TableCell>
-                    <TableCell><Typography fontWeight="bold">Description</Typography></TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {transactions.map((transaction) => (
-                    <TableRow key={transaction.id} hover>
-                      <TableCell>{new Date(transaction.date).toLocaleDateString()}</TableCell>
-                      <TableCell>{transaction.type}</TableCell>
-                      <TableCell>
-                        <Typography fontWeight="bold" color={transaction.amount < 0 ? 'error' : 'success'}>
-                          ${Math.abs(transaction.amount).toFixed(2)}
+      {/* Header */}
+      <Box sx={{ mb: 1 }}>
+        <Typography variant="h4" component="h1" sx={{ 
+          fontSize: '20px',
+          fontWeight: 600,
+          color: '#101828',
+          mb: 0.5
+        }}>
+          Billing Dashboard
+        </Typography>
+      </Box>
+
+      {/* Main Stats Grid */}
+      <Box sx={{ 
+        display: 'grid',
+        gridTemplateColumns: {
+          xs: '1fr',
+          sm: 'repeat(2, 1fr)',
+          md: 'repeat(4, 1fr)'
+        },
+        gap: 1,
+        mb: 1
+      }}>
+        {/* Account Status */}
+        <StatsCard>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <IconBox bgColor="#F4F3FF">
+              <CreditCardIcon sx={{ color: '#9B8AFB' }} />
+            </IconBox>
+            <Box sx={{ ml: 2 }}>
+              <Typography variant="subtitle2" sx={{ color: '#475467' }}>
+                Account Status
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#667085' }}>
+                {subscriptionStatus?.plan || 'Free Plan'}
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="h5" sx={{ fontWeight: 600, color: '#101828', mb: 1 }}>
+              Active
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#667085' }}>
+              Plan Usage: 65%
+            </Typography>
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <LinearProgress 
+              variant="determinate" 
+              value={65} 
+              sx={{ 
+                height: 6,
+                borderRadius: 3,
+                bgcolor: '#F4F3FF',
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 3,
+                  bgcolor: '#9B8AFB'
+                }
+              }} 
+            />
+          </Box>
+        </StatsCard>
+
+        {/* Credits Usage */}
+        <StatsCard>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <IconBox bgColor="#ECFDF3">
+              <Coins sx={{ color: '#12B76A' }} />
+            </IconBox>
+            <Box sx={{ ml: 2 }}>
+              <Typography variant="subtitle2" sx={{ color: '#475467' }}>
+                Credits
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#667085' }}>
+                Daily Usage
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 2 }}>
+            <Typography variant="h5" sx={{ fontWeight: 600, color: '#101828', mr: 1 }}>
+              {subscriptionStatus?.creditsRemaining || 0}
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#667085' }}>
+              / {subscriptionStatus?.creditsPerDay || 0}
+            </Typography>
+          </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 0.5,
+            color: '#12B76A'
+          }}>
+            <TrendingUpIcon sx={{ fontSize: 16 }} />
+            <Typography variant="body2">
+              {Math.round((subscriptionStatus?.creditsRemaining / subscriptionStatus?.creditsPerDay) * 100)}% left
+            </Typography>
+          </Box>
+        </StatsCard>
+
+        {/* Time Remaining */}
+        <StatsCard>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <IconBox bgColor="#FFF4ED">
+              <AccessTimeIcon sx={{ color: '#F79009' }} />
+            </IconBox>
+            <Box sx={{ ml: 2 }}>
+              <Typography variant="subtitle2" sx={{ color: '#475467' }}>
+                Time Remaining
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#667085' }}>
+                Subscription Period
+              </Typography>
+            </Box>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 2 }}>
+            <Typography variant="h5" sx={{ fontWeight: 600, color: '#101828', mr: 1 }}>
+              {calculateDaysRemaining(subscriptionStatus?.validUntil)}
+            </Typography>
+            <Typography variant="body2" sx={{ color: '#667085' }}>
+              days
+            </Typography>
+          </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 0.5,
+            color: '#F79009'
+          }}>
+            <UpdateIcon sx={{ fontSize: 16 }} />
+            <Typography variant="body2">
+              Valid Until: {subscriptionStatus?.validUntil ? new Date(subscriptionStatus.validUntil).toLocaleDateString() : 'Unlimited'}
+            </Typography>
+          </Box>
+        </StatsCard>
+
+        {/* Quick Actions */}
+        <StatsCard>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+            <IconBox bgColor="#EEF4FF">
+              <BoltIcon sx={{ color: '#444CE7' }} />
+            </IconBox>
+            <Box sx={{ ml: 2 }}>
+              <Typography variant="subtitle2" sx={{ color: '#475467' }}>
+                Quick Actions
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#667085' }}>
+                Manage Account
+              </Typography>
+            </Box>
+          </Box>
+          
+          {/* Updated Button with correct navigation */}
+          <Button
+            variant="outlined"
+            fullWidth
+            sx={{
+              bgcolor: '#F4F3FF',
+              color: '#444CE7',
+              borderColor: '#E4E3FF',
+              '&:hover': {
+                bgcolor: '#EBE9FE',
+                borderColor: '#E4E3FF'
+              },
+              textTransform: 'none',
+              borderRadius: '8px',
+              height: '36px',
+              fontWeight: 500
+            }}
+            onClick={() => {
+              // Update the parent component's activeTab state
+              if (onTabChange) {
+                onTabChange('integrations');
+              }
+            }}
+          >
+            Manage API Keys
+          </Button>
+        </StatsCard>
+      </Box>
+
+      {/* Available Plans */}
+      <Box sx={{ 
+        mt: 8,
+        mb: 4
+      }}>
+        <Typography 
+          variant="h5" 
+          sx={{ 
+            mb: 4,
+            fontWeight: 600,
+            color: '#101828'
+          }}
+        >
+          Available Plans
+        </Typography>
+
+        <PlansGrid>
+          {availablePlans.map((plan) => {
+            const recommendation = getUpgradeRecommendation(
+              subscriptionStatus?.plan,
+              plan.name
+            );
+            const isCurrentPlan = plan.id === currentPlan;
+            const isFreeplan = plan.id === 'free';
+            
+            return (
+              <Box key={plan.id} sx={{ position: 'relative' }}>
+                <DashboardCard
+                  planId={plan.id}
+                  sx={{
+                    border: getCardBorderStyle(plan, isCurrentPlan, recommendation),
+                  }}
+                >
+                  <div className="corner-shape corner-shape-top" />
+                  <div className="corner-shape corner-shape-bottom" />
+                  
+                  {/* Card Content */}
+                  <Box sx={{ 
+                    position: 'relative',
+                    zIndex: 1,
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}>
+                    {/* Price and Plan Name */}
+                    <Box>
+                      <Typography variant="h5" sx={{ 
+                        mb: 1, 
+                        fontWeight: 600,
+                        fontSize: '28px',
+                        color: '#101828'
+                      }}>
+                        ₹{((plan.priceInPaisa || 0) / 100).toFixed(2)}
+                      </Typography>
+                      
+                      <Typography variant="h6" sx={{ 
+                        mb: 2,
+                        color: '#344054',
+                        fontWeight: 500
+                      }}>
+                        {plan.name}
+                      </Typography>
+                    </Box>
+
+                    {/* Credits Info and Features */}
+                    <Typography variant="body2" sx={{
+                      color: '#475467',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1,
+                      mb: 2
+                    }}>
+                      <BoltIcon sx={{ fontSize: 16, color: '#7F56D9' }} />
+                      {plan.creditsPerDay} credits/day
+                    </Typography>
+
+                    {/* Features List */}
+                    <Box sx={{ mb: 2 }}>
+                      {plan.id === 'free' && (
+                        <>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Basic API access
+                          </Typography>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Community support
+                          </Typography>
+                        </>
+                      )}
+                      
+                      {plan.id === 'monthly' && (
+                        <>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Priority API access
+                          </Typography>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Email support
+                          </Typography>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Advanced analytics
+                          </Typography>
+                        </>
+                      )}
+                      
+                      {plan.id === 'three_month' && (
+                        <>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Everything in Monthly
+                          </Typography>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Priority support
+                          </Typography>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Custom integrations
+                          </Typography>
+                        </>
+                      )}
+                      
+                      {(plan.id === 'six_month' || plan.id === 'yearly') && (
+                        <>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Everything in 3-month plan
+                          </Typography>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            24/7 Premium support
+                          </Typography>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Advanced API features
+                          </Typography>
+                          <Typography variant="body2" sx={{ 
+                            color: '#475467', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1, 
+                            mb: 1 
+                          }}>
+                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                            Custom solutions
+                          </Typography>
+                        </>
+                      )}
+                    </Box>
+
+                    {/* Spacer to push content to bottom */}
+                    <Box sx={{ flex: 1 }} />
+
+                    {/* Savings Info */}
+                    {plan.id !== 'free' && plan.id !== 'monthly' && (
+                      <Box sx={{
+                        mb: 2,
+                        p: 1.5,
+                        bgcolor: '#F9FAFB',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 1
+                      }}>
+                        <ArrowUpwardIcon sx={{ fontSize: 16, color: '#12B76A' }} />
+                        <Typography variant="body2" sx={{ color: '#12B76A', fontWeight: 500 }}>
+                          Save {calculateSavings(plan)?.percent}% (₹{MONTHLY_PRICE - calculateSavings(plan)?.monthly}/mo)
                         </Typography>
-                      </TableCell>
-                      <TableCell>{transaction.description}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Paper>,
-            loading.transactions,
-            errors.transactions
-          )}
-        </Grid>
-      </Grid>
+                      </Box>
+                    )}
+
+                    {/* Button */}
+                    {(!isFreeplan || isCurrentPlan) && (
+                      renderActionButton(plan, isCurrentPlan)
+                    )}
+                  </Box>
+
+                  {/* Status Chips */}
+                  {isCurrentPlan && (
+                    <Chip
+                      icon={<CheckCircleIcon />}
+                      label="Current Plan"
+                      sx={{
+                        position: 'absolute',
+                        top: -12,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        bgcolor: '#F4F3FF',
+                        color: '#444CE7',
+                        zIndex: 2,
+                        border: '1px solid #444CE7',
+                        fontWeight: 500
+                      }}
+                    />
+                  )}
+                  {recommendation?.highlight && (
+                    <Chip
+                      label="Recommended Upgrade"
+                      size="small"
+                      sx={{
+                        position: 'absolute',
+                        top: -12,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        bgcolor: '#ECFDF3',
+                        color: '#12B76A',
+                        fontWeight: 500,
+                        border: '1px solid #A6F4C5',
+                        zIndex: 2
+                      }}
+                    />
+                  )}
+                </DashboardCard>
+              </Box>
+            );
+          })}
+        </PlansGrid>
+      </Box>
+
+      {/* Transaction History */}
+      <Box sx={{ mt: 8 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
+          Transaction History
+        </Typography>
+        <TableContainer component={Paper} sx={{ boxShadow: 'none', border: '1px solid #E5E7EB' }}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Date</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Amount</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Description</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading.transactions ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    <CircularProgress size={24} />
+                  </TableCell>
+                </TableRow>
+              ) : transactions.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center">
+                    No transaction history available
+                  </TableCell>
+                </TableRow>
+              ) : (
+                transactions.map((transaction) => (
+                  <TableRow key={transaction._id}>
+                    <TableCell>{transaction.formattedDate}</TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={transaction.type.replace('_', ' ')}
+                        size="small"
+                        sx={{
+                          bgcolor: getStatusColor(transaction.type).bg,
+                          color: getStatusColor(transaction.type).color,
+                          textTransform: 'capitalize'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography sx={{ 
+                        color: transaction.type === 'deposit' ? '#12B76A' : '#F04438',
+                        fontWeight: 500
+                      }}>
+                        {transaction.formattedAmount}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={transaction.status}
+                        size="small"
+                        sx={{
+                          bgcolor: getStatusBgColor(transaction.status),
+                          color: getStatusTextColor(transaction.status),
+                          textTransform: 'capitalize'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>{transaction.description}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
     </Box>
   );
 };

@@ -1,16 +1,18 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
-const ProtectedRoute = ({ children, isAdmin = false }) => {
-  const { user } = useAuth();
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
 
-  if (!user) {
-    return <Navigate to="/login" />;
+  if (loading) {
+    return <div>Loading...</div>;
   }
 
-  if (isAdmin && !user.isAdmin) {
-    return <Navigate to="/dashboard" />;
+  if (!user) {
+    // Redirect to login page, but save the current location
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   return children;

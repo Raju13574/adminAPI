@@ -35,12 +35,14 @@ int main() {
 
 // Move LineNumberedEditor outside of IDEComponent
 const LineNumberedEditor = ({ value, onValueChange, language }) => {
-  const lines = value.split('\n');
+  const lines = (value || '').split('\n');
   const [cursorLine, setCursorLine] = useState(1);
 
   const handleCursorChange = (editor) => {
-    const lineNumber = editor.getCursor().line + 1;
-    setCursorLine(lineNumber);
+    if (editor && editor.getCursor) {
+      const lineNumber = editor.getCursor().line + 1;
+      setCursorLine(lineNumber);
+    }
   };
 
   return (
@@ -56,10 +58,17 @@ const LineNumberedEditor = ({ value, onValueChange, language }) => {
         ))}
       </div>
       <Editor
-        value={value}
+        value={value || ''}
         onValueChange={onValueChange}
         onCursor={handleCursorChange}
-        highlight={code => highlight(code, languages[language] || languages.javascript)}
+        highlight={code => {
+          try {
+            return highlight(code || '', languages[language] || languages.javascript)
+          } catch (e) {
+            console.error('Highlight error:', e);
+            return code || '';
+          }
+        }}
         padding={10}
         style={{
           fontFamily: '"Fira code", "Fira Mono", monospace',
@@ -88,8 +97,9 @@ const IDEComponent = ({ inDashboard = false }) => {
   const [output, setOutput] = useState('');
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [executionTime, setExecutionTime] = useState(0);  // Initialize to 0 instead of null
+  const [executionTime, setExecutionTime] = useState(null);  // Changed to null initially
   const [isCodeExecuted, setIsCodeExecuted] = useState(false);
+  const [loadingTime, setLoadingTime] = useState(0);
 
   const supportedLanguages = ['javascript', 'python', 'java', 'cpp', 'c'];
 
@@ -107,17 +117,14 @@ const IDEComponent = ({ inDashboard = false }) => {
     if (isLoading) {
       const startTime = Date.now();
       timer = setInterval(() => {
-        setExecutionTime((Date.now() - startTime) / 1000);
-      }, 100);
-    } else if (isCodeExecuted) {
-      // Only set the final execution time if code has been executed
-      setExecutionTime((prevTime) => parseFloat(prevTime.toFixed(3)));
+        setLoadingTime((Date.now() - startTime) / 1000);
+      }, 50); // Update more frequently for smoother counter
     }
 
     return () => {
       if (timer) clearInterval(timer);
     };
-  }, [isLoading, isCodeExecuted]);
+  }, [isLoading]);
 
   const parseErrorMessage = (error) => {
     if (typeof error === 'string') {
@@ -154,15 +161,23 @@ const IDEComponent = ({ inDashboard = false }) => {
     setIsLoading(true);
     setError(null);
     setOutput('');
-    setExecutionTime(0);  // Reset to 0 instead of null
+    setExecutionTime(0);  // Start at 0
+    setLoadingTime(0);    // Reset loading time
     setIsCodeExecuted(false);
+    
+    const startTime = Date.now();
+
     try {
-      const result = await API.executeCode(currentLanguage, code, input);
-      if (result.error) {
-        setError(result.error);
-        setOutput(`Error: ${result.error}`);
+      const response = await API.executeCode(currentLanguage, code, input);
+      
+      if (response.error) {
+        setError(response.error);
+        setOutput(`Error: ${response.error}`);
       } else {
-        setOutput(`${result.result || 'Execution completed successfully.'}`);
+        setOutput(response.result || '');
+        const endTime = Date.now();
+        const totalTime = (endTime - startTime) / 1000;
+        setExecutionTime(parseFloat(totalTime.toFixed(3)));
       }
       setIsCodeExecuted(true);
     } catch (error) {
@@ -176,6 +191,12 @@ const IDEComponent = ({ inDashboard = false }) => {
 
   const goToDashboard = () => {
     navigate('/dashboard');
+  };
+
+  const getOutputText = () => {
+    if (!isCodeExecuted) return output;
+    if (executionTime === null || isNaN(executionTime)) return output;
+    return `${output}\n\n${executionTime.toFixed(3)} seconds`;
   };
 
   return (
@@ -217,7 +238,7 @@ const IDEComponent = ({ inDashboard = false }) => {
       </div>
       
       {/* Main content area */}
-      <div className="flex-grow flex overflow-hidden p-4">
+      <div className="flex-grow flex overflow-hidden p-2">
         {/* Code Editor */}
         <div className="w-3/5 pr-4 flex flex-col overflow-hidden">
           <h3 className="text-lg font-semibold mb-2">Editor</h3>
@@ -251,12 +272,14 @@ const IDEComponent = ({ inDashboard = false }) => {
                 <div className="text-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto mb-2"></div>
                   <p className="text-lg font-semibold">Nexterchat Finalizing your output...</p>
-                  <p className="text-sm mt-2">{executionTime.toFixed(3)}s</p>
+                  <p className="text-sm mt-2">
+                    {loadingTime.toFixed(3)}s
+                  </p>
                 </div>
               </div>
             ) : (
               <textarea
-                value={`${output}${isCodeExecuted ? `\n\n${executionTime.toFixed(3)} seconds` : ''}`}
+                value={getOutputText()}
                 readOnly
                 placeholder="Code output will appear here"
                 className="w-full h-[calc(100%-2rem)] bg-gray-800 text-white border border-gray-600 rounded p-2 resize-none focus:outline-none"

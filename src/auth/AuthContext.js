@@ -15,20 +15,12 @@ export const AuthProvider = ({ children }) => {
         if (token && storedUser) {
           API.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           setUser(storedUser);
-        } else {
-          // If no token or user in localStorage, try to fetch from the server
-          const response = await API.get('/users/profile');
-          const userData = response.data;
-          setUser(userData);
-          localStorage.setItem('user', JSON.stringify(userData));
-          localStorage.setItem('authToken', userData.token);
-          API.defaults.headers.common['Authorization'] = `Bearer ${userData.token}`;
         }
       } catch (error) {
         console.error('Error checking authentication:', error);
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
-        setUser(null);
+        delete API.defaults.headers.common['Authorization'];
       } finally {
         setLoading(false);
       }
@@ -58,10 +50,8 @@ export const AuthProvider = ({ children }) => {
       return user; // Return the user object
     } catch (error) {
       console.error('AuthContext: Login error:', error);
-      if (error.response) {
-        console.log('AuthContext: Error response:', error.response.data);
-        console.log('AuthContext: Error status:', error.response.status);
-        throw new Error(error.response.data.message || 'Invalid credentials');
+      if (error.response && error.response.data && error.response.data.error) {
+        throw new Error(error.response.data.error);
       }
       throw new Error('An unexpected error occurred. Please try again.');
     }

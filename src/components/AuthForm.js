@@ -15,7 +15,7 @@ const AuthForm = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, user } = useAuth();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     setUserData({ ...userData, [e.target.name]: e.target.value });
@@ -28,18 +28,22 @@ const AuthForm = ({ onLogin }) => {
 
     try {
       if (isLogin) {
-        const loggedInUser = await login(userData.emailOrUsername, userData.password);
-        if (loggedInUser.isAdmin) {
-          navigate('/admin/dashboard'); // Redirect admin to admin dashboard
-        } else {
-          navigate('/dashboard'); // Redirect regular user to dashboard
-        }
+        await onLogin(userData.emailOrUsername, userData.password);
       } else {
-        // Your existing registration code
+        // Registration logic
+        const response = await API.post('/users/register', {
+          username: userData.username,
+          email: userData.email,
+          password: userData.password
+        });
+        console.log('Registration successful:', response.data);
+        // Automatically log in the user after successful registration
+        await login(userData.email, userData.password);
+        navigate('/dashboard');
       }
     } catch (err) {
       console.error('AuthForm: Error during submission:', err);
-      setError(err.message || 'An unexpected error occurred. Please try again.');
+      setError(err.response?.data?.error || err.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }

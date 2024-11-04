@@ -30,7 +30,7 @@ const apiMethods = {
   getWalletBalance: () => API.get('/wallet/balance'),
   getWalletTransactions: () => API.get('/wallet/transactions'),
   getWalletCreditSpent: () => API.get('/wallet/credit-spent'),
-  addFunds: (amount) => API.post('/wallet/addbalance', { amount }),
+  addFunds: (amount) => API.post('/wallet/addbalance', { amountInRupees: amount }),
   getSubscriptionStatus: () => API.get('/subscription/status'),
   getAvailablePlans: () => API.get('/subscription/plans'),
   getUsageData: () => API.get('/usage/data'),
@@ -39,7 +39,7 @@ const apiMethods = {
   cancelSubscription: () => API.post('/subscription/cancel'),
   getUserProfile: () => API.get('/users/profile'),
   getClientCredentials: () => API.get('/users/client-credentials'),
-  getOverallUsage: () => API.get('/usage/api-analytics/usage'),
+  getOverallUsage: () => API.get('/usage'),
   executeCode: async (language, code, input) => {
     try {
       const response = await API.post('/execute', { language, code, input });
@@ -56,12 +56,12 @@ const apiMethods = {
     }
   },
   getCreditSpent: () => API.get('/wallet/credit-spent'),
-  getLanguageUsage: (language) => API.get(`/usage/language/${language}`),
-  getApiUsageAnalytics: () => API.get('/usage/api-analytics/usage'),
-  getLanguageAnalytics: () => API.get('/usage/api-analytics/languages'),
-  getPerformanceAnalytics: () => API.get('/usage/api-analytics/performance'),
-  purchaseCredits: (amount) => API.post('/wallet/purchase-credits', { amount }),
+  purchaseCredits: (credits) => API.post('/wallet/purchase-credits', { credits }),
   getPurchasedCredits: () => API.get('/wallet/purchased-credits'),
+  getAnalyticsData: (interval) => 
+    API.get(`/analytics/data?interval=${interval}`),
+  getLanguageUsage: (language) => 
+    API.get(`/usage/language/${language}`)
 };
 
 // Combine the axios instance with the API methods

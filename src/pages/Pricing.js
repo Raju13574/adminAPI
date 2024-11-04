@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 import API from '../api/config';
 import { motion, AnimatePresence, useViewportScroll, useTransform } from 'framer-motion';
+import { useInView } from 'framer-motion';
 
 const planQuotes = {
   'free-plan': [
@@ -135,11 +136,35 @@ const PlanBar = ({ plan, isActive, setActivePlan }) => {
   );
 };
 
+const PricingTier = ({ tier, isInView }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 50 }}
+      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 50 }}
+      transition={{ duration: 0.5 }}
+      className="bg-white p-6 rounded-lg shadow-lg"
+    >
+      <h3 className="text-2xl font-bold mb-4">{tier.name}</h3>
+      <p className="text-4xl font-bold mb-4">${tier.price}<span className="text-sm font-normal">/month</span></p>
+      <ul className="mb-6">
+        {tier.features.map((feature, index) => (
+          <li key={index} className="mb-2">{feature}</li>
+        ))}
+      </ul>
+      <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300">
+        Choose Plan
+      </button>
+    </motion.div>
+  );
+};
+
 const Pricing = () => {
   const [activePlan, setActivePlan] = useState('monthly-plan');
   const { scrollY } = useViewportScroll();
   const y1 = useTransform(scrollY, [0, 300], [0, 100]);
   const y2 = useTransform(scrollY, [0, 300], [0, -100]);
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: false, amount: 0.2 });
 
   const pricingPlans = [
     { name: 'Free Plan', price: 0, credits: '50 credits/day', duration: 'forever', ctaText: 'Start for free', planId: 'free-plan' },

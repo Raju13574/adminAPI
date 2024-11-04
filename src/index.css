@@ -323,3 +323,56 @@ html {
   transform: translateY(-3px);
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
+
+.sidebar {
+  width: 56px;
+  transition: width 0.3s ease;
+  overflow: hidden;
+  position: fixed;
+  height: 100%;
+  z-index: 10;
+  background-color: #fff;
+}
+
+.sidebar:hover {
+  width: 200px;
+}
+
+.sidebar .menu-item {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-bar {
+  position: fixed;
+  width: calc(100% - 56px);
+  left: 56px;
+  top: 0;
+  background-color: #fff;
+  z-index: 10;
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

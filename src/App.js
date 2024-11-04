@@ -19,16 +19,22 @@ import ScrollToTop from './components/ScrollToTop';
 import Auth from './pages/Auth';
 import AdminDashboard from './components/AdminDashboard/AdminDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import AnalyticsPage from './components/AnalyticsPage';  // Add this line
+import APIDocumentation from './pages/APIDocumentation';
+import NotFound from './pages/NotFound';
+
+// ... rest of your code remains the same
 
 const ProtectedAdminRoute = ({ children }) => {
   const { user, loading } = useAuth();
+  const location = useLocation();
   
   if (loading) {
     return <div>Loading...</div>;
   }
   
   if (!user || !user.isAdmin) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
   
   return children;
@@ -37,12 +43,17 @@ const ProtectedAdminRoute = ({ children }) => {
 const AppContent = () => {
   const location = useLocation();
   const { user } = useAuth();
-  const isDashboardRoute = location.pathname.includes('/dashboard') || location.pathname.includes('/admin/dashboard');
+  
+  const isProtectedRoute = 
+    location.pathname.includes('/dashboard') || 
+    location.pathname.includes('/admin/dashboard') ||
+    location.pathname.includes('/ide') ||
+    location.pathname.includes('/analytics');
 
   return (
-    <div className={`min-h-screen ${isDashboardRoute ? 'bg-white' : 'bg-[#2c183f] text-white'} overflow-x-hidden flex flex-col`}>
-      {!isDashboardRoute && <Navbar />}
-      {!isDashboardRoute && <div className="h-px bg-pink-500 w-full"></div>}
+    <div className={`min-h-screen ${isProtectedRoute ? 'bg-white' : 'bg-[#2c183f] text-white'} overflow-x-hidden flex flex-col`}>
+      {!isProtectedRoute && <Navbar />}
+      {!isProtectedRoute && <div className="h-px bg-pink-500 w-full"></div>}
       <div className="flex-grow">
         <Routes>
           <Route path="/" element={<Home />} />
@@ -51,7 +62,7 @@ const AppContent = () => {
           <Route path="/faqs" element={<FAQs />} />
           <Route path="/contact" element={<Contact />} />
           <Route 
-            path="/dashboard" 
+            path="/dashboard/*" 
             element={
               <ProtectedRoute>
                 <Dashboard />
@@ -60,21 +71,38 @@ const AppContent = () => {
           />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
-          <Route path="/ide" element={<IDEComponent />} />
+          <Route 
+            path="/ide" 
+            element={
+              <ProtectedRoute>
+                <IDEComponent />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/auth" element={<Auth />} />
           <Route path="/login" element={<Auth />} />
           <Route path="/signup" element={<Auth />} />
           <Route 
-            path="/admin/dashboard" 
+            path="/admin/dashboard/*" 
             element={
               <ProtectedAdminRoute>
                 <AdminDashboard />
               </ProtectedAdminRoute>
             } 
           />
+          <Route 
+            path="/analytics" 
+            element={
+              <ProtectedRoute>
+                <AnalyticsPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="/api-docs" element={<APIDocumentation />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
-      {!isDashboardRoute && <Footer />}
+      {!isProtectedRoute && <Footer />}
     </div>
   );
 };

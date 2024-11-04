@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useAnimation } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import adSecurityImage from '../assets/adsecurity.png'; // Import the image
+
 
 const AlternatingSection = ({ title, content, isReversed }) => {
   const [activeSlide, setActiveSlide] = useState(0);
@@ -15,7 +15,7 @@ const AlternatingSection = ({ title, content, isReversed }) => {
   const images = [
     "https://via.placeholder.com/500x300?text=Secure+Compilation",
     "https://via.placeholder.com/500x300?text=Scalable+Solutions",
-    adSecurityImage // Use the imported image here
+    
   ];
 
   useEffect(() => {

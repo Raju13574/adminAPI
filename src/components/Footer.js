@@ -1,8 +1,15 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import logo from '../assets/logo.png';
 
 const Footer = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
   return (
     <footer className="bg-gradient-to-r from-blue-50 to-purple-50 text-gray-600">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

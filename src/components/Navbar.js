@@ -119,7 +119,6 @@ const Navbar = () => {
 
 const NavLinks = ({ mobile, toggleSidebar, currentPath, activeSection }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
 
   const links = [
     { to: "/", label: "Home", section: "home" },
@@ -127,11 +126,6 @@ const NavLinks = ({ mobile, toggleSidebar, currentPath, activeSection }) => {
     { to: "/about", label: "About Us", section: "about" },
     { to: "/faqs", label: "FAQs", section: "faqs" },
   ];
-
-  // Add Dashboard link only for non-admin users
-  if (user && !user.isAdmin) {
-    links.push({ to: "/dashboard", label: "Dashboard", section: "dashboard" });
-  }
 
   const linkClasses = (isActive, isMobile) => 
     `block px-3 py-2 rounded-md text-base font-medium transition-colors duration-200
