@@ -43,3 +43,7 @@ To customize the website for your needs:
 ## Deployment
 
 To deploy this website, run `npm run build` and deploy the contents of the `build` folder to your hosting provider.
+
+# Edit README.md or any other file
+nano README.md
+# Add some text like "Testing Jenkins pipeline"
