@@ -200,7 +200,6 @@ const Dashboard = () => {
     { id: 'billing', icon: CreditCard, label: 'Billing' },
     { id: 'notifications', icon: Bell, label: 'Notifications' },
     { id: 'integrations', icon: Zap, label: 'Integrations' },
-    { id: 'activity', icon: Activity, label: 'Activity Log' },
     { id: 'ide', icon: Code, label: 'IDE' },
     { id: 'api-usage', icon: BarChart2, label: 'API Usage' },
   ];
@@ -592,21 +591,6 @@ const Dashboard = () => {
 
       case 'integrations':
         return <Integrations />;
-
-      case 'activity':
-        return (
-          <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-slate-800">Activity Log</h1>
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-              {/* Add your activity log content */}
-              {recentCompilations.map((compilation, index) => (
-                <div key={index} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-xl transition-colors">
-                  {/* ... activity item content ... */}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
 
       case 'ide':
         return <IDEComponent 

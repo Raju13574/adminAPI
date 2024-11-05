@@ -168,10 +168,10 @@ const Pricing = () => {
 
   const pricingPlans = [
     { name: 'Free Plan', price: 0, credits: '50 credits/day', duration: 'forever', ctaText: 'Start for free', planId: 'free-plan' },
-    { name: 'Monthly', price: 419, credits: '45,000 credits/month', duration: 'month', ctaText: 'Get Monthly', planId: 'monthly-plan' },
-    { name: '3 Months', price: 1092, credits: '2,000 credits/day', duration: 'quarter', ctaText: 'Get 3M Plan', planId: 'three-months-plan' },
-    { name: '6 Months', price: 1680, credits: '3,000 credits/day', duration: '6 months', ctaText: 'Get 6M Plan', planId: 'six-months-plan' },
-    { name: 'Yearly', price: 3025, credits: 'Unlimited credits', duration: 'year', ctaText: 'Get Yearly Plan', planId: 'yearly-plan' },
+    { name: 'Monthly', price: 499, credits: '1,500 credits/day', duration: 'month', ctaText: 'Get Monthly', planId: 'monthly-plan' },
+    { name: '3 Months', price: 1299, credits: '2,000 credits/day', duration: '3 months', ctaText: 'Get 3M Plan', planId: 'three-months-plan' },
+    { name: '6 Months', price: 1999, credits: '3,000 credits/day', duration: '6 months', ctaText: 'Get 6M Plan', planId: 'six-months-plan' },
+    { name: 'Yearly', price: 3599, credits: 'Unlimited credits', duration: 'year', ctaText: 'Get Yearly Plan', planId: 'yearly-plan' },
   ];
 
   const containerVariants = {

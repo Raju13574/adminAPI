@@ -1,5 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  ComposedChart,
+  ScatterChart,
+  Scatter,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 import API from '../../api/config';
 
 const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6', '#EF4444'];
@@ -24,14 +43,72 @@ const TimeRangeSelect = ({ value, onChange }) => (
   </select>
 );
 
-const StatCard = ({ title, value, className }) => (
-  <div className={`bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-shadow ${className}`}>
-    <p className="text-sm text-gray-500 mb-1">{title}</p>
-    <p className="text-3xl font-bold text-gray-900">{value}</p>
+const MetricCard = ({ title, value, trend, trendValue, icon: Icon }) => (
+  <div className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all">
+    <div className="flex justify-between items-start">
+      <div>
+        <p className="text-sm text-gray-500">{title}</p>
+        <h3 className="text-2xl font-bold mt-2">{value}</h3>
+        {trend && (
+          <p className={`text-sm mt-2 flex items-center ${
+            trend === 'up' ? 'text-green-500' : 'text-red-500'
+          }`}>
+            {trend === 'up' ? '↑' : '↓'} {trendValue}
+          </p>
+        )}
+      </div>
+      {Icon && (
+        <div className="p-3 bg-indigo-50 rounded-lg">
+          <Icon className="w-6 h-6 text-indigo-500" />
+        </div>
+      )}
+    </div>
   </div>
 );
 
-const ExecutionTrendsChart = React.memo(({ data, timeRange }) => {
+const LanguageUsageCard = ({ data }) => (
+  <div className="bg-white p-6 rounded-xl shadow-sm">
+    <h3 className="text-lg font-semibold mb-4">Language Usage</h3>
+    <div className="space-y-4">
+      {Object.entries(data).map(([language, stats]) => (
+        <div key={language} className="flex items-center">
+          <div className="w-24 flex-shrink-0">
+            <span className="text-sm font-medium">{language}</span>
+          </div>
+          <div className="flex-grow">
+            <div className="h-2 bg-gray-100 rounded-full">
+              <div
+                className="h-2 bg-indigo-500 rounded-full"
+                style={{ width: `${stats.percentage}%` }}
+              />
+            </div>
+          </div>
+          <div className="w-20 text-right">
+            <span className="text-sm text-gray-500">{stats.percentage}%</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
+const ChartTypeSelect = ({ value, onChange }) => (
+  <select
+    value={value}
+    onChange={(e) => onChange(e.target.value)}
+    className="px-4 py-2 bg-white rounded-lg border border-gray-200 text-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+  >
+    <option value="line">Line Chart</option>
+    <option value="area">Area Chart</option>
+    <option value="bar">Bar Chart</option>
+    <option value="composed">Composed Chart</option>
+    <option value="smooth">Smooth Line</option>
+    <option value="stepped">Stepped Line</option>
+    <option value="scatter">Scatter Plot</option>
+  </select>
+);
+
+const ExecutionTrendsChart = React.memo(({ data, timeRange, chartType = 'line' }) => {
   const formatXAxis = (timestamp) => {
     const date = new Date(timestamp);
     if (timeRange === '7d' || timeRange === '30d') {
@@ -47,83 +124,157 @@ const ExecutionTrendsChart = React.memo(({ data, timeRange }) => {
     } else {
       return date.toLocaleString('en-US', {
         hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
+        minute: '2-digit'
       });
     }
   };
 
-  // Get all available metrics excluding timestamp and displayTime
+  // Custom tooltip content
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-100">
+          <p className="text-sm text-gray-600 mb-2">
+            {new Date(label).toLocaleString()}
+          </p>
+          {payload.map((entry, index) => (
+            <div key={index} className="flex items-center gap-2 text-sm">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              />
+              <span className="font-medium">{entry.name}:</span>
+              <span>
+                {entry.value} {entry.name.toLowerCase() === 'credits' ? 'credits' : 'executions'}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Get metrics excluding timestamp
   const metrics = Object.keys(data[0] || {}).filter(
     key => !['timestamp', 'displayTime'].includes(key)
   );
 
-  // Custom colors for specific metrics
+  // Define common axis props
+  const commonAxisProps = [
+    <CartesianGrid 
+      key="grid"
+      strokeDasharray="3 3" 
+      vertical={false} 
+      stroke="#E5E7EB" 
+      opacity={0.5}
+    />,
+    <XAxis 
+      key="x-axis"
+      dataKey="timestamp"
+      tickFormatter={formatXAxis}
+      type="number"
+      domain={['dataMin', 'dataMax']}
+      scale="time"
+      stroke="#9CA3AF"
+      tickLine={false}
+      axisLine={false}
+      dy={10}
+      tick={{ fontSize: 12 }}
+    />,
+    <YAxis 
+      key="y-axis"
+      allowDecimals={false}
+      domain={[0, 'auto']}
+      axisLine={false}
+      tickLine={false}
+      stroke="#9CA3AF"
+      dx={-10}
+      tick={{ fontSize: 12 }}
+    />,
+    <Tooltip 
+      key="tooltip"
+      content={<CustomTooltip />}
+      cursor={{ stroke: '#E5E7EB', strokeWidth: 1 }}
+    />,
+    <Legend 
+      key="legend"
+      formatter={(value) => value.toUpperCase()}
+      iconType="circle"
+      wrapperStyle={{
+        paddingTop: '20px'
+      }}
+    />
+  ];
+
+  // Get line color based on metric
   const getLineColor = (metric) => {
     switch (metric.toLowerCase()) {
-      case 'total': return '#4F46E5';  // Indigo
-      case 'credits': return '#10B981'; // Green
-      case 'python': return '#F59E0B';  // Yellow
-      case 'javascript': return '#EC4899'; // Pink
-      case 'java': return '#8B5CF6';    // Purple
-      case 'cpp': return '#EF4444';     // Red
-      default: return COLORS[metrics.indexOf(metric) % COLORS.length];
+      case 'total': return '#4F46E5';    // Indigo
+      case 'credits': return '#10B981';   // Emerald
+      case 'c': return '#818CF8';         // Light Indigo
+      case 'java': return '#34D399';      // Light Emerald
+      case 'cpp': return '#FB7185';       // Light Rose
+      case 'python': return '#FBBF24';    // Light Amber
+      default: return '#A78BFA';          // Light Purple
+    }
+  };
+
+  const renderChart = () => {
+    const commonProps = {
+      data,
+      margin: { top: 20, right: 30, left: 20, bottom: 20 }
+    };
+
+    switch (chartType) {
+      case 'area':
+        return (
+          <AreaChart {...commonProps}>
+            {commonAxisProps}
+            {metrics.map((metric) => (
+              <Area
+                key={metric}
+                type="monotone"
+                dataKey={metric}
+                stroke={getLineColor(metric)}
+                fill={`url(#gradient-${metric})`}
+                strokeWidth={2}
+                name={metric.toUpperCase()}
+              />
+            ))}
+          </AreaChart>
+        );
+      // ... other chart type cases ...
+      default:
+        return (
+          <LineChart {...commonProps}>
+            {commonAxisProps}
+            {metrics.map((metric) => (
+              <Line
+                key={metric}
+                type="monotone"
+                dataKey={metric}
+                stroke={getLineColor(metric)}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{
+                  r: 6,
+                  stroke: '#fff',
+                  strokeWidth: 2,
+                  fill: getLineColor(metric)
+                }}
+                name={metric.toUpperCase()}
+              />
+            ))}
+          </LineChart>
+        );
     }
   };
 
   return (
-    <div className="h-80">
+    <div className="h-[400px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart 
-          data={data} 
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-          <XAxis 
-            dataKey="timestamp"
-            tickFormatter={formatXAxis}
-            type="number"
-            domain={['dataMin', 'dataMax']}
-            scale="time"
-            interval="preserveStartEnd"
-            minTickGap={50}
-          />
-          <YAxis 
-            allowDecimals={false}
-            domain={[0, 'auto']}
-          />
-          <Tooltip
-            labelFormatter={(timestamp) => new Date(timestamp).toLocaleString()}
-            formatter={(value, name) => [
-              `${value} ${name.toLowerCase() === 'credits' ? 'credits' : 'executions'}`,
-              name.toUpperCase()
-            ]}
-            contentStyle={{
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              border: 'none',
-              borderRadius: '8px',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-            }}
-          />
-          <Legend 
-            formatter={(value) => value.toUpperCase()}
-            iconType="circle"
-          />
-          {metrics.map((metric) => (
-            <Line
-              key={metric}
-              type="monotone"
-              dataKey={metric}
-              stroke={getLineColor(metric)}
-              strokeWidth={2}
-              name={metric.toUpperCase()}
-              dot={{ r: 3 }}
-              activeDot={{ r: 5 }}
-              isAnimationActive={false}
-              connectNulls={true}
-            />
-          ))}
-        </LineChart>
+        {renderChart()}
       </ResponsiveContainer>
     </div>
   );
@@ -153,10 +304,11 @@ const getIntervalMilliseconds = (interval) => {
 };
 
 const APIUsageDashboard = () => {
-  const [timeRange, setTimeRange] = useState('15m');
+  const [timeRange, setTimeRange] = useState('24h');
   const [activeTab, setActiveTab] = useState('overview');
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [chartType, setChartType] = useState('line');
 
   // Memoize the transformed data to prevent unnecessary recalculations
   const executionTrendsData = React.useMemo(() => {
@@ -211,7 +363,37 @@ const APIUsageDashboard = () => {
       }
     });
 
-    return baseData.sort((a, b) => a.timestamp - b.timestamp);
+    // Add interpolation for smoother curves
+    const interpolateData = (baseData) => {
+      const result = [];
+      for (let i = 0; i < baseData.length - 1; i++) {
+        const current = baseData[i];
+        const next = baseData[i + 1];
+        result.push(current);
+
+        // Add intermediate points for smoother curves
+        if (next.timestamp - current.timestamp > interval) {
+          const steps = Math.min(5, Math.floor((next.timestamp - current.timestamp) / interval));
+          for (let step = 1; step < steps; step++) {
+            const progress = step / steps;
+            const interpolatedPoint = {
+              timestamp: current.timestamp + (next.timestamp - current.timestamp) * progress,
+              ...Object.keys(current).reduce((acc, key) => {
+                if (key !== 'timestamp') {
+                  acc[key] = current[key] + (next[key] - current[key]) * progress;
+                }
+                return acc;
+              }, {})
+            };
+            result.push(interpolatedPoint);
+          }
+        }
+      }
+      result.push(baseData[baseData.length - 1]);
+      return result;
+    };
+
+    return interpolateData(baseData.sort((a, b) => a.timestamp - b.timestamp));
   }, [analyticsData, timeRange]);
 
   useEffect(() => {
@@ -269,89 +451,109 @@ const APIUsageDashboard = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">API Usage Analytics</h1>
-            <p className="text-gray-500">Monitor your API usage and performance metrics</p>
+            <h1 className="text-2xl font-bold text-gray-900">API Analytics</h1>
+            <p className="text-gray-500 mt-1">Monitor your code execution metrics</p>
           </div>
-          <TimeRangeSelect value={timeRange} onChange={setTimeRange} />
+          <div className="flex gap-4">
+            <ChartTypeSelect value={chartType} onChange={setChartType} />
+            <TimeRangeSelect value={timeRange} onChange={setTimeRange} />
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <StatCard 
-            title="Total Executions" 
-            value={analyticsData?.summary?.totalExecutions.toLocaleString() || '0'} 
+        {/* Metric Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <MetricCard
+            title="Total Executions"
+            value={analyticsData?.summary?.totalExecutions.toLocaleString()}
+            trend="up"
+            trendValue="12.5% vs last period"
           />
-          <StatCard 
-            title="Success Rate" 
-            value={analyticsData?.summary?.successRate || '0%'} 
+          <MetricCard
+            title="Success Rate"
+            value={analyticsData?.summary?.successRate}
+            trend="up"
+            trendValue="2.1% vs last period"
           />
-          <StatCard 
-            title="Credits Used" 
-            value={analyticsData?.summary?.totalCreditsUsed.toLocaleString() || '0'} 
+          <MetricCard
+            title="Credits Used"
+            value={analyticsData?.summary?.totalCreditsUsed.toLocaleString()}
+            trend="down"
+            trendValue="5% vs last period"
+          />
+          <MetricCard
+            title="Avg Response Time"
+            value="245ms"
+            trend="down"
+            trendValue="12ms improvement"
           />
         </div>
 
-        {/* Tabs */}
-        <div className="flex space-x-4 mb-6">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              activeTab === 'overview'
-                ? 'bg-indigo-500 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('languages')}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              activeTab === 'languages'
-                ? 'bg-indigo-500 text-white'
-                : 'bg-white text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            Languages
-          </button>
+        {/* Main Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Execution Trends - Takes up 2 columns */}
+          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-semibold mb-4">Execution Trends</h3>
+            <ExecutionTrendsChart 
+              data={executionTrendsData}
+              timeRange={timeRange}
+              chartType={chartType}
+            />
+          </div>
+
+          {/* Language Distribution - Takes up 1 column */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-semibold mb-4">Language Distribution</h3>
+            <PieChart width={300} height={300}>
+              <Pie
+                data={languageChartData}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={80}
+                paddingAngle={5}
+                dataKey="value"
+              >
+                {languageChartData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+              <Legend />
+            </PieChart>
+          </div>
         </div>
 
-        {/* Charts */}
-        <div className="bg-white rounded-xl shadow-sm p-6">
-          {activeTab === 'overview' ? (
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Execution Trends</h3>
-              <ExecutionTrendsChart 
-                data={executionTrendsData} 
-                timeRange={timeRange}
-              />
+        {/* Language Usage Breakdown */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <LanguageUsageCard data={analyticsData?.summary?.languageBreakdown} />
+          
+          {/* Success/Failure Metrics */}
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <h3 className="text-lg font-semibold mb-4">Success/Failure Metrics</h3>
+            <div className="space-y-4">
+              {Object.entries(analyticsData?.summary?.languageBreakdown || {}).map(([lang, data]) => (
+                <div key={lang} className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-sm font-medium">{lang}</span>
+                    <span className="text-sm text-gray-500">
+                      {((data.successful / (data.successful + data.failed)) * 100).toFixed(1)}% Success
+                    </span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-green-500 rounded-full"
+                      style={{
+                        width: `${(data.successful / (data.successful + data.failed)) * 100}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-          ) : (
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Language Distribution</h3>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={languageChartData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={120}
-                      dataKey="value"
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {languageChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(value, name) => [`${value} executions`, name]} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

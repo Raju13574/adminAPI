@@ -365,6 +365,70 @@ const calculateDaysRemaining = (endDate) => {
   return diffDays > 0 ? diffDays : 0;
 };
 
+// Simplified styled components for plans
+const PlanRow = styled(Box)(({ theme, isCurrentPlan }) => ({
+  padding: '20px',
+  borderRadius: '12px',
+  backgroundColor: '#FFFFFF',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: '12px',
+  border: `1px solid ${isCurrentPlan ? '#E0E7FF' : '#F2F4F7'}`,
+  transition: 'all 0.2s ease',
+  position: 'relative',
+  overflow: 'hidden',
+  '&:hover': {
+    backgroundColor: '#FAFBFF',
+    borderColor: '#D1D5DB',
+    transform: 'translateY(-1px)',
+    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)'
+  },
+  '&::before': isCurrentPlan ? {
+    content: '""',
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: '4px',
+    backgroundColor: '#6366F1',
+    borderRadius: '4px 0 0 4px'
+  } : {}
+}));
+
+const PlanInfo = styled(Box)({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '4px'
+});
+
+const PlanDetails = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '32px'
+});
+
+// Update the PlanFeature styled component with new colors
+const PlanFeature = styled(Box)({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '6px 12px',
+  borderRadius: '20px',
+  backgroundColor: '#F0F9FF',  // Lighter blue background
+  '& svg': {
+    fontSize: '16px',
+    color: '#0EA5E9'  // Bright blue for icon
+  }
+});
+
+const PlanContainer = styled(Box)(({ theme }) => ({
+  padding: '24px',
+  borderRadius: '16px',
+  backgroundColor: '#FAFAFA',
+  marginTop: '24px'
+}));
+
 const BillingContent = ({ onTabChange }) => {
   const { user } = useAuth();
   const [currentPlan, setCurrentPlan] = useState(null);
@@ -379,7 +443,7 @@ const BillingContent = ({ onTabChange }) => {
   });
   const [generalError, setGeneralError] = useState(null);
 
-  const [snackbar, setSnackbar] = useState({
+  const [notification, setNotification] = useState({
     open: false,
     message: '',
     severity: 'success'
@@ -391,11 +455,11 @@ const BillingContent = ({ onTabChange }) => {
   });
 
   const handleCloseSnackbar = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
+    setNotification(prev => ({ ...prev, open: false }));
   };
 
   const showNotification = (message, severity = 'success') => {
-    setSnackbar({
+    setNotification({
       open: true,
       message,
       severity
@@ -472,69 +536,40 @@ const BillingContent = ({ onTabChange }) => {
   const handleUpgrade = async (planId) => {
     try {
       setButtonLoading(prev => ({ ...prev, upgrade: true }));
-      
-      // Log the attempt
       console.log('Attempting to upgrade to plan:', planId);
 
-      // Create order
-      const orderResponse = await API.post('/subscription/plans/' + planId + '/create-razorpay-order');
-      console.log('Order response:', orderResponse.data);
+      // Get current subscription status
+      const statusResponse = await API.get('/subscription/status');
+      const currentPlan = statusResponse.data.plan;
 
-      if (!orderResponse.data || !orderResponse.data.orderId) {
-        throw new Error('Invalid order response');
+      if (currentPlan === planId) {
+        showNotification('You are already subscribed to this plan', 'warning');
+        return;
       }
 
-      // Initialize Razorpay
-      const options = {
-        key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-        amount: orderResponse.data.amountInPaisa,
-        currency: "INR",
-        name: "CompilerX",
-        description: `Upgrade to ${orderResponse.data.plan.name}`,
-        order_id: orderResponse.data.orderId,
-        handler: async function (response) {
-          try {
-            console.log('Payment successful:', response);
-            
-            // Verify payment
-            const verifyResponse = await API.post('/subscription/verify-razorpay-payment', {
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_signature: response.razorpay_signature,
-              planId: planId
-            });
+      // Proceed with upgrade without confirmation dialog
+      const response = await API.post(`/subscription/plans/${planId}/upgrade`);
+      console.log('Upgrade response:', response.data);
 
-            console.log('Verification response:', verifyResponse.data);
-            
-            // Refresh subscription status
-            await fetchSubscriptionStatus();
-            showNotification('Successfully upgraded subscription!');
-          } catch (err) {
-            console.error('Payment verification failed:', err);
-            showNotification(err.response?.data?.error || 'Payment verification failed', 'error');
-          }
-        },
-        prefill: {
-          name: user?.name,
-          email: user?.email
-        },
-        theme: {
-          color: "#444CE7"
-        },
-        modal: {
-          ondismiss: function() {
-            console.log('Payment modal closed');
-            setButtonLoading(prev => ({ ...prev, upgrade: false }));
-          }
-        }
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-
+      if (response.data.success) {
+        showNotification(`Successfully upgraded to ${planId} plan!`, 'success');
+        await Promise.all([
+          fetchSubscriptionStatus(),
+          fetchTransactions()
+        ]);
+      } else {
+        throw new Error(response.data.message || 'Failed to upgrade subscription');
+      }
     } catch (err) {
       console.error('Upgrade error:', err);
-      showNotification(err.response?.data?.error || 'Failed to upgrade subscription', 'error');
+      showNotification(
+        err.response?.data?.message || 
+        err.response?.data?.error || 
+        err.message || 
+        'Failed to upgrade subscription', 
+        'error'
+      );
+    } finally {
       setButtonLoading(prev => ({ ...prev, upgrade: false }));
     }
   };
@@ -542,20 +577,29 @@ const BillingContent = ({ onTabChange }) => {
   const handleCancel = async () => {
     try {
       setButtonLoading(prev => ({ ...prev, cancel: true }));
-      console.log('Attempting to cancel subscription');
-
+      
+      // Proceed with cancellation without confirmation dialog
       const response = await API.post('/subscription/cancel');
       console.log('Cancel response:', response.data);
 
       if (response.data.success) {
-        await fetchSubscriptionStatus();
-        showNotification('Successfully cancelled subscription');
+        showNotification('Successfully cancelled subscription', 'success');
+        await Promise.all([
+          fetchSubscriptionStatus(),
+          fetchTransactions()
+        ]);
       } else {
-        throw new Error(response.data.error || 'Failed to cancel subscription');
+        throw new Error(response.data.message || 'Failed to cancel subscription');
       }
     } catch (err) {
       console.error('Cancel error:', err);
-      showNotification(err.response?.data?.error || 'Failed to cancel subscription', 'error');
+      showNotification(
+        err.response?.data?.message || 
+        err.response?.data?.error || 
+        err.message || 
+        'Failed to cancel subscription', 
+        'error'
+      );
     } finally {
       setButtonLoading(prev => ({ ...prev, cancel: false }));
     }
@@ -581,11 +625,177 @@ const BillingContent = ({ onTabChange }) => {
     );
   };
 
+  // Add this section where your current plans grid is
+  const renderAvailablePlans = () => (
+    <PlanContainer>
+      <Typography 
+        variant="h6" 
+        sx={{ 
+          mb: 3,
+          color: '#111827',
+          fontWeight: 600,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1
+        }}
+      >
+        <BoltIcon sx={{ color: '#0EA5E9' }} />
+        Available Plans
+      </Typography>
+
+      {availablePlans.map((plan) => {
+        const isCurrentPlan = plan.id === currentPlan;
+        
+        return (
+          <PlanRow key={plan.id} isCurrentPlan={isCurrentPlan}>
+            <PlanInfo>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography 
+                  variant="subtitle1" 
+                  sx={{ 
+                    fontWeight: 600, 
+                    color: '#111827'
+                  }}
+                >
+                  {plan.name}
+                </Typography>
+                {isCurrentPlan && (
+                  <Chip
+                    size="small"
+                    label="Current"
+                    sx={{
+                      bgcolor: '#F0F9FF',
+                      color: '#0EA5E9',
+                      fontSize: '12px',
+                      height: '24px',
+                      fontWeight: 500
+                    }}
+                  />
+                )}
+              </Box>
+            </PlanInfo>
+
+            <PlanDetails>
+              <PlanFeature>
+                <BoltIcon />
+                <Typography sx={{ 
+                  color: '#0369A1', // Darker blue for text
+                  fontSize: '14px',
+                  fontWeight: 500
+                }}>
+                  {plan.creditsPerDay} credits/day
+                </Typography>
+              </PlanFeature>
+
+              <Typography sx={{ 
+                fontWeight: 600,
+                color: '#111827',
+                fontSize: '16px',
+                minWidth: '100px'
+              }}>
+                {plan.id === 'free' ? (
+                  <Box sx={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center',
+                    bgcolor: '#ECFDF5',
+                    color: '#059669',
+                    px: 1.5,
+                    py: 0.5,
+                    borderRadius: '16px',
+                    fontSize: '14px',
+                    fontWeight: 500
+                  }}>
+                    Free Plan
+                  </Box>
+                ) : (
+                  <>
+                    ₹{((plan.priceInPaisa || 0) / 100).toFixed(2)}
+                    <Typography 
+                      component="span" 
+                      sx={{ 
+                        fontSize: '12px',
+                        color: '#6B7280',
+                        ml: 0.5
+                      }}
+                    >
+                      /month
+                    </Typography>
+                  </>
+                )}
+              </Typography>
+
+              {(!isCurrentPlan && plan.id !== 'free') && (
+                <Button
+                  variant="outlined"
+                  onClick={() => handleUpgrade(plan.id)}
+                  disabled={buttonLoading.upgrade || plan.id === currentPlan}
+                  sx={{
+                    minWidth: '120px',
+                    height: '36px',
+                    textTransform: 'none',
+                    borderColor: '#E0E7FF',
+                    color: '#4F46E5',
+                    backgroundColor: '#F5F8FF',
+                    fontWeight: 500,
+                    '&:hover': {
+                      backgroundColor: '#EEF2FF',
+                      borderColor: '#C7D2FE'
+                    },
+                    '&:disabled': {
+                      backgroundColor: '#F5F5F5',
+                      borderColor: '#E0E0E0',
+                      color: '#9E9E9E'
+                    }
+                  }}
+                >
+                  {buttonLoading.upgrade ? (
+                    <CircularProgress size={20} sx={{ color: '#4F46E5' }} />
+                  ) : (
+                    'Upgrade Plan'
+                  )}
+                </Button>
+              )}
+
+              {isCurrentPlan && plan.id !== 'free' && (
+                <Button
+                  variant="outlined"
+                  onClick={handleCancel}
+                  disabled={buttonLoading.cancel}
+                  sx={{
+                    minWidth: '120px',
+                    height: '36px',
+                    textTransform: 'none',
+                    borderColor: '#FEE2E2',
+                    color: '#DC2626',
+                    backgroundColor: '#FEF2F2',
+                    fontWeight: 500,
+                    '&:hover': {
+                      backgroundColor: '#FEE2E2',
+                      borderColor: '#FECACA'
+                    },
+                    '&:disabled': {
+                      backgroundColor: '#F5F5F5',
+                      borderColor: '#E0E0E0',
+                      color: '#9E9E9E'
+                    }
+                  }}
+                >
+                  {buttonLoading.cancel ? (
+                    <CircularProgress size={20} sx={{ color: '#DC2626' }} />
+                  ) : (
+                    'Cancel Plan'
+                  )}
+                </Button>
+              )}
+            </PlanDetails>
+          </PlanRow>
+        );
+      })}
+    </PlanContainer>
+  );
+
   return (
-    <Box sx={{ 
-      p: 1,
-      maxWidth: '100%'
-    }}>
+    <Box sx={{ p: 1, maxWidth: '100%' }}>
       {/* Header */}
       <Box sx={{ mb: 1 }}>
         <Typography variant="h4" component="h1" sx={{ 
@@ -766,293 +976,8 @@ const BillingContent = ({ onTabChange }) => {
         </StatsCard>
       </Box>
 
-      {/* Available Plans */}
-      <Box sx={{ 
-        mt: 8,
-        mb: 4
-      }}>
-        <Typography 
-          variant="h5" 
-          sx={{ 
-            mb: 4,
-            fontWeight: 600,
-            color: '#101828'
-          }}
-        >
-          Available Plans
-        </Typography>
-
-        <PlansGrid>
-          {availablePlans.map((plan) => {
-            const recommendation = getUpgradeRecommendation(
-              subscriptionStatus?.plan,
-              plan.name
-            );
-            const isCurrentPlan = plan.id === currentPlan;
-            const isFreeplan = plan.id === 'free';
-            
-            return (
-              <Box key={plan.id} sx={{ position: 'relative' }}>
-                <DashboardCard
-                  planId={plan.id}
-                  sx={{
-                    border: getCardBorderStyle(plan, isCurrentPlan, recommendation),
-                  }}
-                >
-                  <div className="corner-shape corner-shape-top" />
-                  <div className="corner-shape corner-shape-bottom" />
-                  
-                  {/* Card Content */}
-                  <Box sx={{ 
-                    position: 'relative',
-                    zIndex: 1,
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column'
-                  }}>
-                    {/* Price and Plan Name */}
-                    <Box>
-                      <Typography variant="h5" sx={{ 
-                        mb: 1, 
-                        fontWeight: 600,
-                        fontSize: '28px',
-                        color: '#101828'
-                      }}>
-                        ₹{((plan.priceInPaisa || 0) / 100).toFixed(2)}
-                      </Typography>
-                      
-                      <Typography variant="h6" sx={{ 
-                        mb: 2,
-                        color: '#344054',
-                        fontWeight: 500
-                      }}>
-                        {plan.name}
-                      </Typography>
-                    </Box>
-
-                    {/* Credits Info and Features */}
-                    <Typography variant="body2" sx={{
-                      color: '#475467',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 1,
-                      mb: 2
-                    }}>
-                      <BoltIcon sx={{ fontSize: 16, color: '#7F56D9' }} />
-                      {plan.creditsPerDay} credits/day
-                    </Typography>
-
-                    {/* Features List */}
-                    <Box sx={{ mb: 2 }}>
-                      {plan.id === 'free' && (
-                        <>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Basic API access
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Community support
-                          </Typography>
-                        </>
-                      )}
-                      
-                      {plan.id === 'monthly' && (
-                        <>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Priority API access
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Email support
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Advanced analytics
-                          </Typography>
-                        </>
-                      )}
-                      
-                      {plan.id === 'three_month' && (
-                        <>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Everything in Monthly
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Priority support
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Custom integrations
-                          </Typography>
-                        </>
-                      )}
-                      
-                      {(plan.id === 'six_month' || plan.id === 'yearly') && (
-                        <>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Everything in 3-month plan
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            24/7 Premium support
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Advanced API features
-                          </Typography>
-                          <Typography variant="body2" sx={{ 
-                            color: '#475467', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1, 
-                            mb: 1 
-                          }}>
-                            <CheckCircleIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                            Custom solutions
-                          </Typography>
-                        </>
-                      )}
-                    </Box>
-
-                    {/* Spacer to push content to bottom */}
-                    <Box sx={{ flex: 1 }} />
-
-                    {/* Savings Info */}
-                    {plan.id !== 'free' && plan.id !== 'monthly' && (
-                      <Box sx={{
-                        mb: 2,
-                        p: 1.5,
-                        bgcolor: '#F9FAFB',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 1
-                      }}>
-                        <ArrowUpwardIcon sx={{ fontSize: 16, color: '#12B76A' }} />
-                        <Typography variant="body2" sx={{ color: '#12B76A', fontWeight: 500 }}>
-                          Save {calculateSavings(plan)?.percent}% (₹{MONTHLY_PRICE - calculateSavings(plan)?.monthly}/mo)
-                        </Typography>
-                      </Box>
-                    )}
-
-                    {/* Button */}
-                    {(!isFreeplan || isCurrentPlan) && (
-                      renderActionButton(plan, isCurrentPlan)
-                    )}
-                  </Box>
-
-                  {/* Status Chips */}
-                  {isCurrentPlan && (
-                    <Chip
-                      icon={<CheckCircleIcon />}
-                      label="Current Plan"
-                      sx={{
-                        position: 'absolute',
-                        top: -12,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        bgcolor: '#F4F3FF',
-                        color: '#444CE7',
-                        zIndex: 2,
-                        border: '1px solid #444CE7',
-                        fontWeight: 500
-                      }}
-                    />
-                  )}
-                  {recommendation?.highlight && (
-                    <Chip
-                      label="Recommended Upgrade"
-                      size="small"
-                      sx={{
-                        position: 'absolute',
-                        top: -12,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        bgcolor: '#ECFDF3',
-                        color: '#12B76A',
-                        fontWeight: 500,
-                        border: '1px solid #A6F4C5',
-                        zIndex: 2
-                      }}
-                    />
-                  )}
-                </DashboardCard>
-              </Box>
-            );
-          })}
-        </PlansGrid>
-      </Box>
+      {/* Replace the old plans grid with the new simplified version */}
+      {renderAvailablePlans()}
 
       {/* Transaction History */}
       <Box sx={{ mt: 8 }}>
@@ -1125,6 +1050,32 @@ const BillingContent = ({ onTabChange }) => {
           </Table>
         </TableContainer>
       </Box>
+
+      <Snackbar 
+        open={notification.open} 
+        autoHideDuration={6000} 
+        onClose={() => setNotification(prev => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+        sx={{
+          marginTop: '20px',
+          marginRight: '20px'
+        }}
+      >
+        <Alert 
+          onClose={() => setNotification(prev => ({ ...prev, open: false }))} 
+          severity={notification.severity}
+          sx={{ 
+            width: '100%',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+            '& .MuiAlert-icon': {
+              alignItems: 'center'
+            }
+          }}
+          elevation={6}
+        >
+          {notification.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
